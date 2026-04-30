@@ -1,0 +1,28 @@
+node server.js<h2>Search</h2>
+
+<input id="q" placeholder="Search">
+<button onclick="go()">Search</button>
+
+<div id="res"></div>
+
+<script>
+async function go() {
+  const q = document.getElementById("q").value;
+
+  const res = await fetch(`/search?q=${q}`);
+  const data = await res.json();
+
+  document.getElementById("res").innerHTML =
+    data.map(f => `
+      <p>
+        ${f.customer_name} (${f.departure_airport} → ${f.arrival_airport})
+        <br>
+        <a href="https://wa.me/${f.phone}?text=${encodeURIComponent(
+          `Flight reminder: ${f.departure_airport} to ${f.arrival_airport} at ${f.departure_time}`
+        )}">
+        Send WhatsApp
+        </a>
+      </p>
+    `).join("");
+}
+</script>
