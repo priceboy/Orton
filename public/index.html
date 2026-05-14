@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
 <meta charset="UTF-8">
 <title>Flight Manager</title>
@@ -7,10 +8,11 @@
 <style>
 
 body{
-    font-family: Arial;
+    font-family:Arial;
     background:#0f172a;
     color:white;
-    padding:40px;
+    margin:0;
+    padding:30px;
 }
 
 h1,h2{
@@ -20,12 +22,12 @@ h1,h2{
 input,
 button,
 textarea{
-    padding:12px;
-    margin:8px 0;
     width:100%;
-    border-radius:10px;
+    padding:14px;
+    margin-top:10px;
     border:none;
-    font-size:16px;
+    border-radius:10px;
+    font-size:15px;
     box-sizing:border-box;
 }
 
@@ -43,31 +45,39 @@ button:hover{
 .card{
     background:#1e293b;
     padding:20px;
+    border-radius:16px;
     margin-top:15px;
-    border-radius:14px;
-    box-shadow:0 0 10px rgba(0,0,0,0.2);
 }
 
-.ticketGrid{
+.ticketCard{
+    cursor:pointer;
+    transition:0.2s;
+}
+
+.ticketCard:hover{
+    transform:scale(1.02);
+    border:1px solid #38bdf8;
+}
+
+.selected{
+    border:2px solid #22c55e;
+}
+
+.grid{
     display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
-    gap:15px;
+    grid-template-columns:1fr 1fr;
+    gap:25px;
 }
 
-.previewBox{
-    margin-top:20px;
+.leftPanel{
+    overflow-y:auto;
+    max-height:80vh;
 }
 
-textarea{
-    background:#0f172a;
-    color:white;
-    resize:vertical;
-    min-height:220px;
-}
-
-hr{
-    margin:40px 0;
-    border:1px solid #334155;
+.rightPanel{
+    position:sticky;
+    top:20px;
+    height:fit-content;
 }
 
 .highlight{
@@ -80,46 +90,68 @@ hr{
     font-size:14px;
 }
 
+textarea{
+    background:#0f172a;
+    color:white;
+    min-height:250px;
+    resize:vertical;
+}
+
+hr{
+    margin:40px 0;
+    border:1px solid #334155;
+}
+
+.empty{
+    opacity:0.7;
+    text-align:center;
+    padding:40px;
+}
+
 </style>
 </head>
 
 <body>
 
-<h1>✈️ Flight Manager</h1>
+<h1>✈️ Flight Manager Dashboard</h1>
 
 <!-- ================= UPLOAD ================= -->
+
+<div class="card">
 
 <h2>Upload Ticket</h2>
 
 <form id="form">
 
-    <input
-        type="file"
-        name="ticket"
-        required
-    >
+<input
+type="file"
+name="ticket"
+required
+>
 
-    <input
-        type="text"
-        name="phone"
-        placeholder="Phone Number"
-        required
-    >
+<input
+type="text"
+name="phone"
+placeholder="Customer Phone"
+required
+>
 
-    <input
-        type="text"
-        name="reference"
-        placeholder="Reference"
-        required
-    >
+<input
+type="text"
+name="reference"
+placeholder="Booking Reference"
+required
+>
 
-    <button type="submit">
-        Upload Ticket
-    </button>
+<button type="submit">
+Upload Ticket
+</button>
 
 </form>
 
 <div id="uploadStatus"></div>
+
+</div>
 
 <hr>
 
@@ -128,23 +160,39 @@ hr{
 <h2>Search Tickets</h2>
 
 <input
-    id="search"
-    placeholder="Search passenger, phone, airport, reference..."
-/>
+id="search"
+placeholder="Search passenger, airport, phone, reference..."
+>
 
-<div id="results" class="ticketGrid"></div>
+<br><br>
 
-<hr>
+<div class="grid">
 
-<!-- ================= PREVIEW ================= -->
+<!-- LEFT SIDE RESULTS -->
 
-<h2>Selected Ticket</h2>
+<div
+id="results"
+class="leftPanel"
+></div>
 
-<div id="preview" class="previewBox">
+<!-- RIGHT SIDE FULL VIEW -->
 
-    <div class="card">
-        No ticket selected
-    </div>
+<div
+id="preview"
+class="rightPanel"
+>
+
+<div class="card empty">
+
+<h2>No Ticket Selected</h2>
+
+<p>
+Search and click a ticket to fully inspect it.
+</p>
+
+</div>
+
+</div>
 
 </div>
 
@@ -152,7 +200,8 @@ hr{
 
 // ================= UPLOAD =================
 
-document.getElementById("form")
+document
+.getElementById("form")
 .addEventListener("submit", async (e) => {
 
     e.preventDefault();
@@ -196,7 +245,8 @@ document.getElementById("form")
 
 // ================= SEARCH =================
 
-document.getElementById("search")
+document
+.getElementById("search")
 .addEventListener("input", async (e) => {
 
     const query = e.target.value;
@@ -227,9 +277,9 @@ document.getElementById("search")
         if(data.length === 0){
 
             resultsDiv.innerHTML = `
-                <div class="card">
-                    No tickets found
-                </div>
+            <div class="card">
+                No tickets found
+            </div>
             `;
 
             return;
@@ -240,57 +290,46 @@ document.getElementById("search")
             const card =
             document.createElement("div");
 
-            card.className = "card";
+            card.className =
+            "card ticketCard";
 
             card.innerHTML = `
 
-                <h3>
-                    ${ticket.customer_name || "Unknown Passenger"}
-                </h3>
+            <h3>
+                ${ticket.customer_name || "Unknown Passenger"}
+            </h3>
 
-                <p>
-                    📞
-                    <span class="highlight">
-                        ${ticket.phone || "N/A"}
-                    </span>
-                </p>
+            <p>
+                📞 ${ticket.phone || "N/A"}
+            </p>
 
-                <p>
-                    ✈️
-                    ${ticket.departure_airport || "N/A"}
-                    →
-                    ${ticket.arrival_airport || "N/A"}
-                </p>
+            <p>
+                ✈️
+                ${ticket.departure_airport || "N/A"}
+                →
+                ${ticket.arrival_airport || "N/A"}
+            </p>
 
-                <p>
-                    🛫
-                    ${ticket.departure_time || "N/A"}
-                </p>
+            <p>
+                🧭 Flight:
+                ${ticket.flight_number || "N/A"}
+            </p>
 
-                <p>
-                    🧭 Flight:
-                    <span class="highlight">
-                        ${ticket.flight_number || "N/A"}
-                    </span>
-                </p>
-
-                <p>
-                    🧾 Ref:
-                    ${ticket.reference || "N/A"}
-                </p>
-
-                <p class="small">
-                    Carefully review before messaging customer
-                </p>
-
-                <button class="selectBtn">
-                    Review Ticket
-                </button>
+            <p class="small">
+                Click to inspect full ticket
+            </p>
 
             `;
 
-            card.querySelector(".selectBtn")
-            .addEventListener("click", () => {
+            card.addEventListener("click", () => {
+
+                document
+                .querySelectorAll(".ticketCard")
+                .forEach(c => {
+                    c.classList.remove("selected");
+                });
+
+                card.classList.add("selected");
 
                 const whatsappMessage =
 
@@ -299,7 +338,7 @@ document.getElementById("search")
 Passenger:
 ${ticket.customer_name}
 
-Flight:
+Flight Number:
 ${ticket.flight_number}
 
 Route:
@@ -308,84 +347,138 @@ ${ticket.departure_airport} → ${ticket.arrival_airport}
 Departure Time:
 ${ticket.departure_time}
 
-Check-in Time:
+Check-In Time:
 ${ticket.checkin_time}
 
-Reference:
+Booking Reference:
 ${ticket.reference}
+
+Cabin Luggage:
+${ticket.cabin_luggage}
+
+Checked Luggage:
+${ticket.checked_luggage}
 
 Thank you for choosing us.
 Safe travels ✈️`;
 
-                const encodedMessage =
-                encodeURIComponent(
-                    whatsappMessage
-                );
-
-                const whatsappLink =
-                `https://wa.me/${ticket.phone}?text=${encodedMessage}`;
-
                 preview.innerHTML = `
 
-                    <div class="card">
+                <div class="card">
 
-                        <h2>
-                            ${ticket.customer_name}
-                        </h2>
+                <h2>
+                    ${ticket.customer_name}
+                </h2>
 
-                        <p>
-                            📞 ${ticket.phone}
-                        </p>
+                <p>
+                    <span class="highlight">
+                    📞 Phone:
+                    </span>
+                    ${ticket.phone}
+                </p>
 
-                        <p>
-                            ✈️
-                            ${ticket.departure_airport}
-                            →
-                            ${ticket.arrival_airport}
-                        </p>
+                <p>
+                    <span class="highlight">
+                    🧾 Reference:
+                    </span>
+                    ${ticket.reference}
+                </p>
 
-                        <p>
-                            🧭 Flight:
-                            ${ticket.flight_number}
-                        </p>
+                <p>
+                    <span class="highlight">
+                    ✈️ Route:
+                    </span>
+                    ${ticket.departure_airport}
+                    →
+                    ${ticket.arrival_airport}
+                </p>
 
-                        <p>
-                            🛫 Departure:
-                            ${ticket.departure_time}
-                        </p>
+                <p>
+                    <span class="highlight">
+                    🧭 Flight Number:
+                    </span>
+                    ${ticket.flight_number}
+                </p>
 
-                        <p>
-                            ⏰ Check-in:
-                            ${ticket.checkin_time}
-                        </p>
+                <p>
+                    <span class="highlight">
+                    🛫 Departure:
+                    </span>
+                    ${ticket.departure_time}
+                </p>
 
-                        <p>
-                            🧾 Reference:
-                            ${ticket.reference}
-                        </p>
+                <p>
+                    <span class="highlight">
+                    ⏰ Check-In:
+                    </span>
+                    ${ticket.checkin_time}
+                </p>
 
-                        <textarea id="messageBox">${whatsappMessage}</textarea>
+                <p>
+                    <span class="highlight">
+                    🧳 Cabin Luggage:
+                    </span>
+                    ${ticket.cabin_luggage}
+                </p>
 
-                        <br><br>
+                <p>
+                    <span class="highlight">
+                    🛄 Checked Luggage:
+                    </span>
+                    ${ticket.checked_luggage}
+                </p>
 
-                        <button id="sendWhatsapp">
-                            Send WhatsApp Reminder
-                        </button>
+                <h3>
+                    WhatsApp Message
+                </h3>
 
-                    </div>
+                <textarea
+                id="messageBox"
+                >${whatsappMessage}</textarea>
+
+                <br><br>
+
+                <button id="generateBtn">
+                    Generate WhatsApp Message
+                </button>
+
+                <br><br>
+
+                <button id="sendBtn">
+                    Send To Customer
+                </button>
+
+                </div>
 
                 `;
 
-                document.getElementById("sendWhatsapp")
+                document
+                .getElementById("generateBtn")
+                .addEventListener("click", () => {
+
+                    alert(
+                        "WhatsApp message ready below."
+                    );
+
+                });
+
+                document
+                .getElementById("sendBtn")
                 .addEventListener("click", () => {
 
                     const editedMessage =
-                    document.getElementById("messageBox").value;
+                    document
+                    .getElementById("messageBox")
+                    .value;
 
                     const finalLink =
-                    `https://wa.me/${ticket.phone}?text=${encodeURIComponent(editedMessage)}`;
 
-                    window.open(finalLink,"_blank");
+`https://wa.me/${ticket.phone}?text=${encodeURIComponent(editedMessage)}`;
+
+                    window.open(
+                        finalLink,
+                        "_blank"
+                    );
 
                 });
 
