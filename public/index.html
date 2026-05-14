@@ -5,42 +5,81 @@
 <title>Flight Manager</title>
 
 <style>
-body {
+
+body{
     font-family: Arial;
-    background: #0f172a;
-    color: white;
-    padding: 40px;
+    background:#0f172a;
+    color:white;
+    padding:40px;
 }
 
-h1, h2 {
-    color: #38bdf8;
+h1,h2{
+    color:#38bdf8;
 }
 
-input, button {
-    padding: 12px;
-    margin: 8px 0;
-    width: 100%;
-    border-radius: 8px;
-    border: none;
-    font-size: 16px;
+input,
+button,
+textarea{
+    padding:12px;
+    margin:8px 0;
+    width:100%;
+    border-radius:10px;
+    border:none;
+    font-size:16px;
+    box-sizing:border-box;
 }
 
-button {
-    background: #22c55e;
-    color: white;
-    cursor: pointer;
+button{
+    background:#22c55e;
+    color:white;
+    cursor:pointer;
+    font-weight:bold;
 }
 
-.card {
-    background: #1e293b;
-    padding: 15px;
-    margin-top: 10px;
-    border-radius: 10px;
+button:hover{
+    opacity:0.9;
 }
 
-.highlight {
-    color: #38bdf8;
+.card{
+    background:#1e293b;
+    padding:20px;
+    margin-top:15px;
+    border-radius:14px;
+    box-shadow:0 0 10px rgba(0,0,0,0.2);
 }
+
+.ticketGrid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
+    gap:15px;
+}
+
+.previewBox{
+    margin-top:20px;
+}
+
+textarea{
+    background:#0f172a;
+    color:white;
+    resize:vertical;
+    min-height:220px;
+}
+
+hr{
+    margin:40px 0;
+    border:1px solid #334155;
+}
+
+.highlight{
+    color:#38bdf8;
+    font-weight:bold;
+}
+
+.small{
+    color:#94a3b8;
+    font-size:14px;
+}
+
 </style>
 </head>
 
@@ -49,13 +88,35 @@ button {
 <h1>✈️ Flight Manager</h1>
 
 <!-- ================= UPLOAD ================= -->
+
 <h2>Upload Ticket</h2>
 
 <form id="form">
-  <input type="file" name="ticket" required>
-  <input type="text" name="phone" placeholder="Phone" required>
-  <input type="text" name="reference" placeholder="Reference" required>
-  <button type="submit">Upload Ticket</button>
+
+    <input
+        type="file"
+        name="ticket"
+        required
+    >
+
+    <input
+        type="text"
+        name="phone"
+        placeholder="Phone Number"
+        required
+    >
+
+    <input
+        type="text"
+        name="reference"
+        placeholder="Reference"
+        required
+    >
+
+    <button type="submit">
+        Upload Ticket
+    </button>
+
 </form>
 
 <div id="uploadStatus"></div>
@@ -63,81 +124,285 @@ button {
 <hr>
 
 <!-- ================= SEARCH ================= -->
+
 <h2>Search Tickets</h2>
 
-<input id="search" placeholder="Search name, phone, airport..." />
+<input
+    id="search"
+    placeholder="Search passenger, phone, airport, reference..."
+/>
 
-<div id="results"></div>
+<div id="results" class="ticketGrid"></div>
+
+<hr>
+
+<!-- ================= PREVIEW ================= -->
+
+<h2>Selected Ticket</h2>
+
+<div id="preview" class="previewBox">
+
+    <div class="card">
+        No ticket selected
+    </div>
+
+</div>
 
 <script>
+
 // ================= UPLOAD =================
-document.getElementById("form").addEventListener("submit", async (e) => {
-  e.preventDefault();
 
-  const status = document.getElementById("uploadStatus");
-  status.innerHTML = "Uploading...";
+document.getElementById("form")
+.addEventListener("submit", async (e) => {
 
-  const formData = new FormData(e.target);
+    e.preventDefault();
 
-  try {
-    const res = await fetch("/upload", {
-      method: "POST",
-      body: formData
-    });
+    const status =
+    document.getElementById("uploadStatus");
 
-    const text = await res.text();
+    status.innerHTML =
+    "Uploading ticket...";
 
-    status.innerHTML = "✅ " + text;
-    e.target.reset();
+    const formData =
+    new FormData(e.target);
 
-  } catch (err) {
-    console.error(err);
-    status.innerHTML = "❌ Upload failed";
-  }
+    try{
+
+        const res =
+        await fetch("/upload",{
+            method:"POST",
+            body:formData
+        });
+
+        const text =
+        await res.text();
+
+        status.innerHTML =
+        "✅ " + text;
+
+        e.target.reset();
+
+    }catch(err){
+
+        console.error(err);
+
+        status.innerHTML =
+        "❌ Upload failed";
+
+    }
+
 });
 
 
 // ================= SEARCH =================
-document.getElementById("search").addEventListener("input", async (e) => {
-  const query = e.target.value;
 
-  if (!query) {
-    document.getElementById("results").innerHTML = "";
-    return;
-  }
+document.getElementById("search")
+.addEventListener("input", async (e) => {
 
-  try {
-    const res = await fetch(`/search?q=${query}`);
-    const data = await res.json();
+    const query = e.target.value;
 
-    const resultsDiv = document.getElementById("results");
-    resultsDiv.innerHTML = "";
+    const resultsDiv =
+    document.getElementById("results");
 
-    if (data.length === 0) {
-        resultsDiv.innerHTML = "<p>No results found</p>";
+    const preview =
+    document.getElementById("preview");
+
+    if(!query.trim()){
+
+        resultsDiv.innerHTML = "";
+
         return;
     }
 
-    data.forEach(ticket => {
-      const card = document.createElement("div");
-      card.className = "card";
+    try{
 
-      card.innerHTML = `
-        <b>${ticket.customer_name || "Unknown"}</b><br>
-        📞 ${ticket.phone}<br>
-        ✈️ ${ticket.departure_airport} → ${ticket.arrival_airport}<br>
-        🛫 ${ticket.departure_time || "N/A"}<br>
-        🧾 Ref: ${ticket.reference}<br>
-        🧭 Flight: ${ticket.flight_number || "N/A"}
-      `;
+        const res =
+        await fetch(`/search?q=${query}`);
 
-      resultsDiv.appendChild(card);
-    });
+        const data =
+        await res.json();
 
-  } catch (err) {
-    console.error(err);
-  }
+        resultsDiv.innerHTML = "";
+
+        if(data.length === 0){
+
+            resultsDiv.innerHTML = `
+                <div class="card">
+                    No tickets found
+                </div>
+            `;
+
+            return;
+        }
+
+        data.forEach(ticket => {
+
+            const card =
+            document.createElement("div");
+
+            card.className = "card";
+
+            card.innerHTML = `
+
+                <h3>
+                    ${ticket.customer_name || "Unknown Passenger"}
+                </h3>
+
+                <p>
+                    📞
+                    <span class="highlight">
+                        ${ticket.phone || "N/A"}
+                    </span>
+                </p>
+
+                <p>
+                    ✈️
+                    ${ticket.departure_airport || "N/A"}
+                    →
+                    ${ticket.arrival_airport || "N/A"}
+                </p>
+
+                <p>
+                    🛫
+                    ${ticket.departure_time || "N/A"}
+                </p>
+
+                <p>
+                    🧭 Flight:
+                    <span class="highlight">
+                        ${ticket.flight_number || "N/A"}
+                    </span>
+                </p>
+
+                <p>
+                    🧾 Ref:
+                    ${ticket.reference || "N/A"}
+                </p>
+
+                <p class="small">
+                    Carefully review before messaging customer
+                </p>
+
+                <button class="selectBtn">
+                    Review Ticket
+                </button>
+
+            `;
+
+            card.querySelector(".selectBtn")
+            .addEventListener("click", () => {
+
+                const whatsappMessage =
+
+`✈️ FLIGHT REMINDER
+
+Passenger:
+${ticket.customer_name}
+
+Flight:
+${ticket.flight_number}
+
+Route:
+${ticket.departure_airport} → ${ticket.arrival_airport}
+
+Departure Time:
+${ticket.departure_time}
+
+Check-in Time:
+${ticket.checkin_time}
+
+Reference:
+${ticket.reference}
+
+Thank you for choosing us.
+Safe travels ✈️`;
+
+                const encodedMessage =
+                encodeURIComponent(
+                    whatsappMessage
+                );
+
+                const whatsappLink =
+                `https://wa.me/${ticket.phone}?text=${encodedMessage}`;
+
+                preview.innerHTML = `
+
+                    <div class="card">
+
+                        <h2>
+                            ${ticket.customer_name}
+                        </h2>
+
+                        <p>
+                            📞 ${ticket.phone}
+                        </p>
+
+                        <p>
+                            ✈️
+                            ${ticket.departure_airport}
+                            →
+                            ${ticket.arrival_airport}
+                        </p>
+
+                        <p>
+                            🧭 Flight:
+                            ${ticket.flight_number}
+                        </p>
+
+                        <p>
+                            🛫 Departure:
+                            ${ticket.departure_time}
+                        </p>
+
+                        <p>
+                            ⏰ Check-in:
+                            ${ticket.checkin_time}
+                        </p>
+
+                        <p>
+                            🧾 Reference:
+                            ${ticket.reference}
+                        </p>
+
+                        <textarea id="messageBox">${whatsappMessage}</textarea>
+
+                        <br><br>
+
+                        <button id="sendWhatsapp">
+                            Send WhatsApp Reminder
+                        </button>
+
+                    </div>
+
+                `;
+
+                document.getElementById("sendWhatsapp")
+                .addEventListener("click", () => {
+
+                    const editedMessage =
+                    document.getElementById("messageBox").value;
+
+                    const finalLink =
+                    `https://wa.me/${ticket.phone}?text=${encodeURIComponent(editedMessage)}`;
+
+                    window.open(finalLink,"_blank");
+
+                });
+
+            });
+
+            resultsDiv.appendChild(card);
+
+        });
+
+    }catch(err){
+
+        console.error(err);
+
+    }
+
 });
+
 </script>
 
 </body>
