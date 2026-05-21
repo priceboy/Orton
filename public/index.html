@@ -127,12 +127,108 @@ hr{
     font-weight:bold;
 }
 
+.expiredBadge{
+    background:#ef4444;
+    color:white;
+    padding:6px 10px;
+    border-radius:8px;
+    display:inline-block;
+    margin-top:10px;
+    font-size:13px;
+    font-weight:bold;
+}
+
+.warningPopup{
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.8);
+    display:none;
+    justify-content:center;
+    align-items:center;
+    z-index:9999;
+}
+
+.warningBox{
+    background:#7f1d1d;
+    border:4px solid #ef4444;
+    padding:40px;
+    border-radius:20px;
+    width:500px;
+    text-align:center;
+    box-shadow:0 0 40px rgba(239,68,68,0.7);
+    animation:pulse 1s infinite;
+}
+
+.warningTitle{
+    font-size:32px;
+    color:#fecaca;
+    margin-bottom:20px;
+    font-weight:bold;
+}
+
+.warningText{
+    font-size:18px;
+    line-height:1.7;
+}
+
+.closeWarning{
+    margin-top:25px;
+    background:#ef4444;
+    font-size:18px;
+}
+
+@keyframes pulse{
+    0%{
+        transform:scale(1);
+    }
+
+    50%{
+        transform:scale(1.03);
+    }
+
+    100%{
+        transform:scale(1);
+    }
+}
+
 </style>
 </head>
 
 <body>
 
 <h1>✈️ Flight Manager Dashboard</h1>
+
+<!-- ================= WARNING POPUP ================= -->
+
+<div
+id="warningPopup"
+class="warningPopup"
+>
+
+<div class="warningBox">
+
+<div class="warningTitle">
+⚠️ OUTDATED TICKET
+</div>
+
+<div
+id="warningMessage"
+class="warningText"
+></div>
+
+<button
+class="closeWarning"
+onclick="closeWarning()"
+>
+I Understand
+</button>
+
+</div>
+
+</div>
 
 <!-- ================= UPLOAD ================= -->
 
@@ -187,14 +283,10 @@ placeholder="Search passenger, airport, phone, reference..."
 
 <div class="grid">
 
-<!-- LEFT PANEL -->
-
 <div
 id="results"
 class="leftPanel"
 ></div>
-
-<!-- RIGHT PANEL -->
 
 <div
 id="preview"
@@ -216,6 +308,65 @@ Search and click a ticket to inspect full details.
 </div>
 
 <script>
+
+// ================= WARNING SYSTEM =================
+
+function closeWarning(){
+
+    document
+    .getElementById("warningPopup")
+    .style.display = "none";
+
+}
+
+function isExpired(dateString){
+
+    if(!dateString) return false;
+
+    const today = new Date();
+
+    const depDate = new Date(dateString);
+
+    today.setHours(0,0,0,0);
+    depDate.setHours(0,0,0,0);
+
+    return depDate < today;
+}
+
+function checkIfTicketExpired(ticket){
+
+    if(!ticket.departure_date) return;
+
+    if(isExpired(ticket.departure_date)){
+
+        document
+        .getElementById("warningPopup")
+        .style.display = "flex";
+
+        document
+        .getElementById("warningMessage")
+        .innerHTML = `
+
+        This ticket appears to be outdated.
+
+        <br><br>
+
+        <b>Passenger:</b>
+        ${ticket.customer_name}
+
+        <br><br>
+
+        <b>Departure Date:</b>
+        ${ticket.departure_date}
+
+        <br><br>
+
+        Please verify carefully before
+        sending reminders to the customer.
+        `;
+    }
+
+}
 
 // ================= UPLOAD =================
 
@@ -261,7 +412,6 @@ document
 
 });
 
-
 // ================= SEARCH =================
 
 document
@@ -306,6 +456,9 @@ document
 
         data.forEach(ticket => {
 
+            const expired =
+            isExpired(ticket.departure_date);
+
             const card =
             document.createElement("div");
 
@@ -338,15 +491,21 @@ document
                 📅 ${ticket.departure_date || "No Date"}
             </p>
 
+            ${expired ? `
+            <div class="expiredBadge">
+            ⚠ EXPIRED TICKET
+            </div>
+            ` : ""}
+
             <p class="small">
                 Click to inspect full ticket
             </p>
 
             `;
 
-            // ================= CLICK EVENT =================
-
             card.addEventListener("click", () => {
+
+                checkIfTicketExpired(ticket);
 
                 document
                 .querySelectorAll(".ticketCard")
@@ -506,8 +665,6 @@ Thank you for choosing us and we wish you a safe and pleasant journey ✈️`;
 
                 `;
 
-                // ================= GENERATE BUTTON =================
-
                 document
                 .getElementById("generateBtn")
                 .addEventListener("click", () => {
@@ -517,8 +674,6 @@ Thank you for choosing us and we wish you a safe and pleasant journey ✈️`;
                     );
 
                 });
-
-                // ================= SEND BUTTON =================
 
                 document
                 .getElementById("sendBtn")
