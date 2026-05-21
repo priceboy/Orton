@@ -15,7 +15,7 @@ body{
     padding:30px;
 }
 
-h1,h2{
+h1,h2,h3{
     color:#38bdf8;
 }
 
@@ -36,10 +36,12 @@ button{
     color:white;
     cursor:pointer;
     font-weight:bold;
+    transition:0.2s;
 }
 
 button:hover{
     opacity:0.9;
+    transform:scale(1.01);
 }
 
 .card{
@@ -47,6 +49,7 @@ button:hover{
     padding:20px;
     border-radius:16px;
     margin-top:15px;
+    box-shadow:0 0 20px rgba(0,0,0,0.2);
 }
 
 .ticketCard{
@@ -93,8 +96,9 @@ button:hover{
 textarea{
     background:#0f172a;
     color:white;
-    min-height:250px;
+    min-height:280px;
     resize:vertical;
+    border:1px solid #334155;
 }
 
 hr{
@@ -106,6 +110,21 @@ hr{
     opacity:0.7;
     text-align:center;
     padding:40px;
+}
+
+.statusSuccess{
+    color:#22c55e;
+    margin-top:10px;
+}
+
+.statusError{
+    color:#ef4444;
+    margin-top:10px;
+}
+
+.route{
+    font-size:18px;
+    font-weight:bold;
 }
 
 </style>
@@ -168,14 +187,14 @@ placeholder="Search passenger, airport, phone, reference..."
 
 <div class="grid">
 
-<!-- LEFT SIDE RESULTS -->
+<!-- LEFT PANEL -->
 
 <div
 id="results"
 class="leftPanel"
 ></div>
 
-<!-- RIGHT SIDE FULL VIEW -->
+<!-- RIGHT PANEL -->
 
 <div
 id="preview"
@@ -187,7 +206,7 @@ class="rightPanel"
 <h2>No Ticket Selected</h2>
 
 <p>
-Search and click a ticket to fully inspect it.
+Search and click a ticket to inspect full details.
 </p>
 
 </div>
@@ -227,7 +246,7 @@ document
         await res.text();
 
         status.innerHTML =
-        "✅ " + text;
+        `<div class="statusSuccess">✅ ${text}</div>`;
 
         e.target.reset();
 
@@ -236,7 +255,7 @@ document
         console.error(err);
 
         status.innerHTML =
-        "❌ Upload failed";
+        `<div class="statusError">❌ Upload failed</div>`;
 
     }
 
@@ -303,7 +322,7 @@ document
                 📞 ${ticket.phone || "N/A"}
             </p>
 
-            <p>
+            <p class="route">
                 ✈️
                 ${ticket.departure_airport || "N/A"}
                 →
@@ -315,11 +334,17 @@ document
                 ${ticket.flight_number || "N/A"}
             </p>
 
+            <p>
+                📅 ${ticket.departure_date || "No Date"}
+            </p>
+
             <p class="small">
                 Click to inspect full ticket
             </p>
 
             `;
+
+            // ================= CLICK EVENT =================
 
             card.addEventListener("click", () => {
 
@@ -333,34 +358,47 @@ document
 
                 const whatsappMessage =
 
-`✈️ Dear costumer We are reaching out to remind you of your upcoming flight on the  with details below:
+`✈️ Flight Reminder
 
-Passenger:
-${ticket.customer_name}
+Dear ${ticket.customer_name},
 
-Flight Number:
-${ticket.flight_number}
+We hope you're doing well.
 
-Route:
+This is a friendly reminder regarding your upcoming flight scheduled for ${ticket.departure_date || "your travel date"}.
+
+━━━━━━━━━━━━━━━
+FLIGHT DETAILS
+━━━━━━━━━━━━━━━
+
+🛫 Route:
 ${ticket.departure_airport} → ${ticket.arrival_airport}
 
-Departure Time:
-${ticket.departure_time}
+🧭 Flight Number:
+${ticket.flight_number || "N/A"}
 
-Check-In Time:
-${ticket.checkin_time}
+📅 Departure Date:
+${ticket.departure_date || "N/A"}
 
-Booking Reference:
-${ticket.reference}
+⏰ Departure Time:
+${ticket.departure_time || "N/A"}
 
-Cabin Luggage:
-${ticket.cabin_luggage}
+⌛ Recommended Check-In Time:
+${ticket.checkin_time || "N/A"}
 
-Checked Luggage:
-${ticket.checked_luggage}
+🧾 Booking Reference:
+${ticket.reference || "N/A"}
 
-Thank you for choosing us.
-Safe travels ✈️`;
+🧳 Cabin Luggage:
+${ticket.cabin_luggage || "N/A"}
+
+🛄 Checked Luggage:
+${ticket.checked_luggage || "N/A"}
+
+━━━━━━━━━━━━━━━
+
+Please ensure you arrive at the airport early enough for check-in and security procedures.
+
+Thank you for choosing us and we wish you a safe and pleasant journey ✈️`;
 
                 preview.innerHTML = `
 
@@ -374,14 +412,14 @@ Safe travels ✈️`;
                     <span class="highlight">
                     📞 Phone:
                     </span>
-                    ${ticket.phone}
+                    ${ticket.phone || "N/A"}
                 </p>
 
                 <p>
                     <span class="highlight">
-                    🧾 Reference:
+                    🧾 Booking Reference:
                     </span>
-                    ${ticket.reference}
+                    ${ticket.reference || "N/A"}
                 </p>
 
                 <p>
@@ -397,52 +435,68 @@ Safe travels ✈️`;
                     <span class="highlight">
                     🧭 Flight Number:
                     </span>
-                    ${ticket.flight_number}
+                    ${ticket.flight_number || "N/A"}
                 </p>
 
                 <p>
                     <span class="highlight">
-                    🛫 Departure:
+                    📅 Departure Date:
                     </span>
-                    ${ticket.departure_time}
+                    ${ticket.departure_date || "N/A"}
                 </p>
 
                 <p>
                     <span class="highlight">
-                    ⏰ Check-In:
+                    🛫 Departure Time:
                     </span>
-                    ${ticket.checkin_time}
+                    ${ticket.departure_time || "N/A"}
+                </p>
+
+                <p>
+                    <span class="highlight">
+                    ⏰ Check-In Time:
+                    </span>
+                    ${ticket.checkin_time || "N/A"}
                 </p>
 
                 <p>
                     <span class="highlight">
                     🧳 Cabin Luggage:
                     </span>
-                    ${ticket.cabin_luggage}
+                    ${ticket.cabin_luggage || "N/A"}
                 </p>
 
                 <p>
                     <span class="highlight">
                     🛄 Checked Luggage:
                     </span>
-                    ${ticket.checked_luggage}
+                    ${ticket.checked_luggage || "N/A"}
                 </p>
 
+                <p>
+                    <span class="highlight">
+                    🔁 Trip Type:
+                    </span>
+                    ${ticket.trip_type || "N/A"}
+                </p>
+
+                <hr>
+
                 <h3>
-                    WhatsApp Message
+                    WhatsApp Message Preview
                 </h3>
 
                 <textarea
                 id="messageBox"
                 >${whatsappMessage}</textarea>
 
-                <br><br>
+                <br>
 
                 <button id="generateBtn">
                     Generate WhatsApp Message
                 </button>
 
-                <br><br>
+                <br>
 
                 <button id="sendBtn">
                     Send To Customer
@@ -452,15 +506,19 @@ Safe travels ✈️`;
 
                 `;
 
+                // ================= GENERATE BUTTON =================
+
                 document
                 .getElementById("generateBtn")
                 .addEventListener("click", () => {
 
                     alert(
-                        "WhatsApp message ready below."
+                        "✅ WhatsApp message generated successfully."
                     );
 
                 });
+
+                // ================= SEND BUTTON =================
 
                 document
                 .getElementById("sendBtn")
@@ -471,9 +529,14 @@ Safe travels ✈️`;
                     .getElementById("messageBox")
                     .value;
 
+                    const cleanPhone =
+                    (ticket.phone || "")
+                    .replace(/\+/g,"")
+                    .replace(/\s/g,"");
+
                     const finalLink =
 
-`https://wa.me/${ticket.phone}?text=${encodeURIComponent(editedMessage)}`;
+`https://wa.me/${cleanPhone}?text=${encodeURIComponent(editedMessage)}`;
 
                     window.open(
                         finalLink,
