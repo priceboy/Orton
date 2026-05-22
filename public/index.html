@@ -144,7 +144,7 @@ hr{
     left:0;
     width:100%;
     height:100%;
-    background:rgba(0,0,0,0.8);
+    background:rgba(0,0,0,0.85);
     display:none;
     justify-content:center;
     align-items:center;
@@ -309,6 +309,64 @@ Search and click a ticket to inspect full details.
 
 <script>
 
+// ================= DATE PARSER =================
+
+function parseCustomDate(dateString){
+
+    if(!dateString) return null;
+
+    let normalDate = new Date(dateString);
+
+    if(!isNaN(normalDate)){
+        return normalDate;
+    }
+
+    // DD/MM/YYYY
+    if(dateString.includes("/")){
+
+        const parts = dateString.split("/");
+
+        if(parts.length === 3){
+
+            const day = parseInt(parts[0]);
+            const month = parseInt(parts[1]) - 1;
+            const year = parseInt(parts[2]);
+
+            return new Date(year, month, day);
+        }
+    }
+
+    // DD MON YYYY
+    const months = {
+        JAN:0,
+        FEB:1,
+        MAR:2,
+        APR:3,
+        MAY:4,
+        JUN:5,
+        JUL:6,
+        AUG:7,
+        SEP:8,
+        OCT:9,
+        NOV:10,
+        DEC:11
+    };
+
+    const match =
+    dateString.match(/(\d{1,2})\s([A-Z]{3})\s(\d{4})/i);
+
+    if(match){
+
+        const day = parseInt(match[1]);
+        const month = months[match[2].toUpperCase()];
+        const year = parseInt(match[3]);
+
+        return new Date(year, month, day);
+    }
+
+    return null;
+}
+
 // ================= WARNING SYSTEM =================
 
 function closeWarning(){
@@ -325,9 +383,13 @@ function isExpired(dateString){
 
     const today = new Date();
 
-    const depDate = new Date(dateString);
-
     today.setHours(0,0,0,0);
+
+    const depDate =
+    parseCustomDate(dateString);
+
+    if(!depDate) return false;
+
     depDate.setHours(0,0,0,0);
 
     return depDate < today;
