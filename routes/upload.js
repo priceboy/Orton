@@ -98,7 +98,14 @@ router.post(
                 cabin_luggage,
                 checked_luggage,
 
-                trip_type
+                trip_type,
+
+                return_departure_airport,
+                return_arrival_airport,
+                return_departure_date,
+                return_departure_time,
+                return_checkin_time,
+                return_flight_number
 
             )
 
@@ -109,7 +116,8 @@ router.post(
                 ?, ?, ?,
                 ?, ?,
                 ?, ?,
-                ?
+                ?,
+                ?, ?, ?, ?, ?, ?
 
             )
 
@@ -139,7 +147,23 @@ router.post(
 
             parsed.checked_luggage,
 
-            parsed.trip_type
+            parsed.trip_type,
+
+            // =========================
+            // ✅ RETURN TRIP DATA
+            // =========================
+
+            parsed.return_departure_airport,
+
+            parsed.return_arrival_airport,
+
+            parsed.return_departure_date,
+
+            parsed.return_departure_time,
+
+            parsed.return_checkin_time,
+
+            parsed.return_flight_number
 
         ],
 
@@ -176,7 +200,7 @@ router.post(
         });
 
         // =========================
-        // ✅ CLEAN UP TEMP FILE
+        // ✅ CLEAN TEMP FILE
         // =========================
 
         fs.unlinkSync(req.file.path);
