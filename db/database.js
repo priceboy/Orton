@@ -34,7 +34,19 @@ db.serialize(() => {
 
             checked_luggage TEXT,
 
-            trip_type TEXT
+            trip_type TEXT,
+
+            return_departure_airport TEXT,
+
+            return_arrival_airport TEXT,
+
+            return_departure_date TEXT,
+
+            return_departure_time TEXT,
+
+            return_checkin_time TEXT,
+
+            return_flight_number TEXT
 
         )
 
