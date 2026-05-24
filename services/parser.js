@@ -66,7 +66,7 @@ function parseTicket(text) {
     }
 
     // =========================
-    // ✅ EXTRACT SEGMENTS
+    // ✅ EXTRACT FLIGHT SEGMENTS
     // =========================
 
     const segments =
@@ -77,19 +77,24 @@ function parseTicket(text) {
 
     for (let seg of segments) {
 
-        const matches =
-        seg.match(/\n([A-Z]{3})\n/g);
+        // =========================
+        // ✅ AIRPORTS
+        // =========================
 
-        if (!matches || matches.length < 2)
+        const airportMatches =
+        [...seg.matchAll(/\b([A-Z]{3})\b/g)];
+
+        if (airportMatches.length < 2)
             continue;
 
-        const airports =
-        matches.map(a =>
-            a.replace(/\n/g, "").trim()
-        );
+        const from =
+        airportMatches[0][1];
+
+        const to =
+        airportMatches[1][1];
 
         // =========================
-        // ✅ BETTER DATE EXTRACTION
+        // ✅ DATE EXTRACTION
         // =========================
 
         let segmentDate = null;
@@ -99,9 +104,7 @@ function parseTicket(text) {
         .map(line => line.trim())
         .filter(Boolean);
 
-        for (let i = 0; i < lines.length; i++) {
-
-            const line = lines[i];
+        for (let line of lines) {
 
             const foundDate =
 
@@ -112,8 +115,12 @@ function parseTicket(text) {
             ||
 
             line.match(
-                /\b\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+\d{4}\b/i
-            )?.[0];
+                /\b\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4}\b/i
+            )?.[0]
+
+            ||
+
+            null;
 
             if (foundDate) {
 
@@ -123,13 +130,24 @@ function parseTicket(text) {
         }
 
         // =========================
-        // ✅ TIME
+        // ✅ DEPARTURE TIME
         // =========================
 
         const segmentTime =
+
         seg.match(
-            /Departing At:\s*\n?(\d{2}:\d{2})/i
-        )?.[1] || null;
+            /Departing At:\s*\n?\s*(\d{2}:\d{2})/i
+        )?.[1]
+
+        ||
+
+        seg.match(
+            /\b(\d{2}:\d{2})\b/
+        )?.[1]
+
+        ||
+
+        null;
 
         // =========================
         // ✅ FLIGHT NUMBER
@@ -138,7 +156,49 @@ function parseTicket(text) {
         const segmentFlight =
         seg.match(
             /\b([A-Z]{2}\s?\d{3,4})\b/
-        )?.[1] || null;
+        )?.[1]
+
+        ||
+
+        null;
+
+        // =========================
+        // ✅ CABIN BAGGAGE
+        // =========================
+
+        const cabin =
+        seg.match(
+            /Cabin Baggage:\s*Adult,\s*([^\n]+)/i
+        )?.[1]
+
+        ||
+
+        seg.match(
+            /Cabin Baggage\s*([^\n]+)/i
+        )?.[1]
+
+        ||
+
+        null;
+
+        // =========================
+        // ✅ CHECKED BAGGAGE
+        // =========================
+
+        const checked =
+        seg.match(
+            /Checked Baggage:\s*Adult,\s*([^\n]+)/i
+        )?.[1]
+
+        ||
+
+        seg.match(
+            /Checked Baggage\s*([^\n]+)/i
+        )?.[1]
+
+        ||
+
+        null;
 
         // =========================
         // ✅ SAVE LEG
@@ -146,15 +206,19 @@ function parseTicket(text) {
 
         legs.push({
 
-            from: airports[0],
+            from,
 
-            to: airports[1],
+            to,
 
             departure_date: segmentDate,
 
             departure_time: segmentTime,
 
-            flight_number: segmentFlight
+            flight_number: segmentFlight,
+
+            cabin_luggage: cabin,
+
+            checked_luggage: checked
         });
     }
 
@@ -178,7 +242,7 @@ function parseTicket(text) {
     outboundLeg.to || null;
 
     // =========================
-    // ✅ OVERRIDE FINAL DESTINATION
+    // ✅ OVERRIDE HEADER DESTINATION
     // =========================
 
     if (headerArrival) {
@@ -210,7 +274,7 @@ function parseTicket(text) {
     }
 
     // =========================
-    // ✅ ROUND TRIP
+    // ✅ ROUND TRIP CHECK
     // =========================
 
     const isRoundTrip =
@@ -222,22 +286,18 @@ function parseTicket(text) {
 
     const airline =
     text.match(
-        /\n([A-Z ]+LIMITED)/
-    )?.[1]?.trim() || null;
+        /\n([A-Z ]+LIMITED)/i
+    )?.[1]?.trim()
 
-    // =========================
-    // ✅ BAGGAGE
-    // =========================
+    ||
 
-    const cabin =
     text.match(
-        /Cabin Baggage:\s*Adult,\s*([^\n]+)/
-    )?.[1] || null;
+        /\n([A-Z ]+AIRLINES?)/i
+    )?.[1]?.trim()
 
-    const checked =
-    text.match(
-        /Checked Baggage:\s*Adult,\s*([^\n]+)/
-    )?.[1] || null;
+    ||
+
+    null;
 
     // =========================
     // ✅ FINAL DEBUG
@@ -279,18 +339,18 @@ function parseTicket(text) {
         flight_number:
         outboundLeg.flight_number || null,
 
+        cabin_luggage:
+        outboundLeg.cabin_luggage || null,
+
+        checked_luggage:
+        outboundLeg.checked_luggage || null,
+
         // =========================
-        // ✅ AIRLINE / BAGGAGE
+        // ✅ AIRLINE
         // =========================
 
         airline_name:
         airline,
-
-        cabin_luggage:
-        cabin,
-
-        checked_luggage:
-        checked,
 
         // =========================
         // ✅ TRIP TYPE
@@ -302,7 +362,7 @@ function parseTicket(text) {
         : "ONE_WAY",
 
         // =========================
-        // ✅ RETURN TRIP
+        // ✅ RETURN FLIGHT
         // =========================
 
         return_departure_airport:
@@ -323,7 +383,13 @@ function parseTicket(text) {
         ),
 
         return_flight_number:
-        returnLeg?.flight_number || null
+        returnLeg?.flight_number || null,
+
+        return_cabin_luggage:
+        returnLeg?.cabin_luggage || null,
+
+        return_checked_luggage:
+        returnLeg?.checked_luggage || null
     };
 }
 
