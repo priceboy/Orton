@@ -96,7 +96,7 @@ button:hover{
 textarea{
     background:#0f172a;
     color:white;
-    min-height:320px;
+    min-height:220px;
     resize:vertical;
     border:1px solid #334155;
 }
@@ -189,6 +189,17 @@ hr{
 .closeWarning{
     margin-top:25px;
     background:#ef4444;
+    font-size:18px;
+}
+
+.messageSection{
+    margin-top:25px;
+}
+
+.messageTitle{
+    color:#38bdf8;
+    margin-bottom:10px;
+    font-weight:bold;
     font-size:18px;
 }
 
@@ -537,30 +548,36 @@ document
 
             `;
 
-    card.addEventListener("click", () => {
+            card.addEventListener("click", () => {
 
-    checkIfTicketExpired(ticket);
+                checkIfTicketExpired(ticket);
 
-    document
-    .querySelectorAll(".ticketCard")
-    .forEach(c => {
-        c.classList.remove("selected");
-    });
+                document
+                .querySelectorAll(".ticketCard")
+                .forEach(c => {
+                    c.classList.remove("selected");
+                });
 
-    card.classList.add("selected");
+                card.classList.add("selected");
 
-    // =====================================
-    // ✅ OUTBOUND MESSAGE
-    // =====================================
+                // =========================
+                // OUTBOUND MESSAGE
+                // =========================
 
-    const outboundMessage = `
+                const outboundMessage =
+
+`✈️ OUTBOUND FLIGHT REMINDER
+
+Dear ${ticket.customer_name},
+
+This is a reminder regarding your upcoming outbound flight.
 
 ━━━━━━━━━━━━━━━
 OUTBOUND FLIGHT
 ━━━━━━━━━━━━━━━
 
 🛫 Route:
-${ticket.departure_airport || "N/A"} → ${ticket.arrival_airport || "N/A"}
+${ticket.departure_airport} → ${ticket.arrival_airport}
 
 📅 Departure Date:
 ${ticket.departure_date || "N/A"}
@@ -568,29 +585,31 @@ ${ticket.departure_date || "N/A"}
 ⏰ Departure Time:
 ${ticket.departure_time || "N/A"}
 
-🧾 Flight Number:
-${ticket.flight_number || "N/A"}
+🧾 Booking Reference:
+${ticket.reference || "N/A"}
 
-🛄 Check-In Time:
-${ticket.checkin_time || "N/A"}
+Safe travels ✈️`;
 
-`;
+                // =========================
+                // RETURN MESSAGE
+                // =========================
 
-    // =====================================
-    // ✅ RETURN MESSAGE
-    // =====================================
+                const returnMessage =
 
-    const returnMessage =
-    ticket.trip_type === "ROUND_TRIP"
+`✈️ RETURN FLIGHT REMINDER
 
-    ? `
+Dear ${ticket.customer_name},
+
+This is a reminder regarding your return flight.
 
 ━━━━━━━━━━━━━━━
 RETURN FLIGHT
 ━━━━━━━━━━━━━━━
 
 🛫 Route:
-${ticket.return_departure_airport || "N/A"} → ${ticket.return_arrival_airport || "N/A"}
+${ticket.return_departure_airport || ticket.arrival_airport}
+→
+${ticket.return_arrival_airport || ticket.departure_airport}
 
 📅 Return Date:
 ${ticket.return_departure_date || "N/A"}
@@ -598,168 +617,196 @@ ${ticket.return_departure_date || "N/A"}
 ⏰ Return Time:
 ${ticket.return_departure_time || "N/A"}
 
-🧾 Flight Number:
-${ticket.return_flight_number || "N/A"}
-
-🛄 Check-In Time:
-${ticket.return_checkin_time || "N/A"}
-
-`
-
-    : "";
-
-    // =====================================
-    // ✅ FINAL WHATSAPP MESSAGE
-    // =====================================
-
-    const whatsappMessage = `✈️ Flight Reminder
-
-Dear ${ticket.customer_name || "Customer"},
-
-This is a reminder regarding your upcoming flight.
-
-${outboundMessage}
-
-${returnMessage}
-
-━━━━━━━━━━━━━━━
-
 🧾 Booking Reference:
 ${ticket.reference || "N/A"}
 
-Safe travels ✈️`;
+We wish you a pleasant journey ✈️`;
 
-    // =====================================
-    // ✅ PREVIEW PANEL
-    // =====================================
+                preview.innerHTML = `
 
-    preview.innerHTML = `
+                <div class="card">
 
-    <div class="card">
+                <h2>
+                    ${ticket.customer_name}
+                </h2>
 
-        <h2>
-            ${ticket.customer_name || "Unknown Passenger"}
-        </h2>
+                <p>
+                    <span class="highlight">
+                    📞 Phone:
+                    </span>
+                    ${ticket.phone || "N/A"}
+                </p>
 
-        <p>
-            <span class="highlight">
-            📞 Phone:
-            </span>
-            ${ticket.phone || "N/A"}
-        </p>
+                <p>
+                    <span class="highlight">
+                    🧾 Booking Reference:
+                    </span>
+                    ${ticket.reference || "N/A"}
+                </p>
 
-        <p>
-            <span class="highlight">
-            🧾 Booking Reference:
-            </span>
-            ${ticket.reference || "N/A"}
-        </p>
+                <hr>
 
-        <hr>
+                <h3>Outbound Flight</h3>
 
-        <h3>🛫 Outbound Flight</h3>
+                <p>
+                    ✈️
+                    ${ticket.departure_airport || "N/A"}
+                    →
+                    ${ticket.arrival_airport || "N/A"}
+                </p>
 
-        <p>
-            ✈️
-            ${ticket.departure_airport || "N/A"}
-            →
-            ${ticket.arrival_airport || "N/A"}
-        </p>
+                <p>
+                    📅 ${ticket.departure_date || "N/A"}
+                </p>
 
-        <p>
-            📅 ${ticket.departure_date || "N/A"}
-        </p>
+                <p>
+                    ⏰ ${ticket.departure_time || "N/A"}
+                </p>
 
-        <p>
-            ⏰ ${ticket.departure_time || "N/A"}
-        </p>
+                <p>
+                    🛬 Check-In:
+                    ${ticket.checkin_time || "N/A"}
+                </p>
 
-        <p>
-            🧾 Flight:
-            ${ticket.flight_number || "N/A"}
-        </p>
+                <p>
+                    🛩 Flight:
+                    ${ticket.flight_number || "N/A"}
+                </p>
 
-        <p>
-            🛄 Check-In:
-            ${ticket.checkin_time || "N/A"}
-        </p>
+                ${ticket.trip_type === "ROUND_TRIP" ? `
 
-        ${ticket.trip_type === "ROUND_TRIP" ? `
+                <hr>
 
-        <hr>
+                <h3>Return Flight</h3>
 
-        <h3>🔁 Return Flight</h3>
+                <p>
+                    ✈️
+                    ${ticket.return_departure_airport || "N/A"}
+                    →
+                    ${ticket.return_arrival_airport || "N/A"}
+                </p>
 
-        <p>
-            ✈️
-            ${ticket.return_departure_airport || "N/A"}
-            →
-            ${ticket.return_arrival_airport || "N/A"}
-        </p>
+                <p>
+                    📅 ${ticket.return_departure_date || "N/A"}
+                </p>
 
-        <p>
-            📅 ${ticket.return_departure_date || "N/A"}
-        </p>
+                <p>
+                    ⏰ ${ticket.return_departure_time || "N/A"}
+                </p>
 
-        <p>
-            ⏰ ${ticket.return_departure_time || "N/A"}
-        </p>
+                <p>
+                    🛬 Check-In:
+                    ${ticket.return_checkin_time || "N/A"}
+                </p>
 
-        <p>
-            🧾 Flight:
-            ${ticket.return_flight_number || "N/A"}
-        </p>
+                <p>
+                    🛩 Flight:
+                    ${ticket.return_flight_number || "N/A"}
+                </p>
 
-        <p>
-            🛄 Check-In:
-            ${ticket.return_checkin_time || "N/A"}
-        </p>
+                ` : ""}
 
-        ` : ""}
+                <hr>
 
-        <hr>
+                <div class="messageSection">
 
-        <textarea
-        id="messageBox"
-        >${whatsappMessage}</textarea>
+                    <div class="messageTitle">
+                        📤 Outbound WhatsApp Message
+                    </div>
 
-        <br>
+                    <textarea
+                    id="outboundMessageBox"
+                    >${outboundMessage}</textarea>
 
-        <button id="sendBtn">
-            Send To Customer
-        </button>
+                    <button id="sendOutboundBtn">
+                        Send Outbound Reminder
+                    </button>
 
-    </div>
-    `;
+                </div>
 
-    // =====================================
-    // ✅ WHATSAPP BUTTON
-    // =====================================
+                ${ticket.trip_type === "ROUND_TRIP" ? `
 
-    document
-    .getElementById("sendBtn")
-    .addEventListener("click", () => {
+                <div class="messageSection">
 
-        const editedMessage =
-        document
-        .getElementById("messageBox")
-        .value;
+                    <div class="messageTitle">
+                        🔁 Return WhatsApp Message
+                    </div>
 
-        const cleanPhone =
-        (ticket.phone || "")
-        .replace(/\+/g,"")
-        .replace(/\s/g,"");
+                    <textarea
+                    id="returnMessageBox"
+                    >${returnMessage}</textarea>
 
-        const finalLink =
+                    <button id="sendReturnBtn">
+                        Send Return Reminder
+                    </button>
+
+                </div>
+
+                ` : ""}
+
+                </div>
+                `;
+
+                // =========================
+                // SEND OUTBOUND
+                // =========================
+
+                document
+                .getElementById("sendOutboundBtn")
+                .addEventListener("click", () => {
+
+                    const editedMessage =
+                    document
+                    .getElementById("outboundMessageBox")
+                    .value;
+
+                    const cleanPhone =
+                    (ticket.phone || "")
+                    .replace(/\+/g,"")
+                    .replace(/\s/g,"");
+
+                    const finalLink =
 
 `https://wa.me/${cleanPhone}?text=${encodeURIComponent(editedMessage)}`;
 
-        window.open(
-            finalLink,
-            "_blank"
-        );
-    });
-});
+                    window.open(
+                        finalLink,
+                        "_blank"
+                    );
+                });
+
+                // =========================
+                // SEND RETURN
+                // =========================
+
+                if(ticket.trip_type === "ROUND_TRIP"){
+
+                    document
+                    .getElementById("sendReturnBtn")
+                    .addEventListener("click", () => {
+
+                        const editedMessage =
+                        document
+                        .getElementById("returnMessageBox")
+                        .value;
+
+                        const cleanPhone =
+                        (ticket.phone || "")
+                        .replace(/\+/g,"")
+                        .replace(/\s/g,"");
+
+                        const finalLink =
+
+`https://wa.me/${cleanPhone}?text=${encodeURIComponent(editedMessage)}`;
+
+                        window.open(
+                            finalLink,
+                            "_blank"
+                        );
+                    });
+                }
+
+            });
 
             resultsDiv.appendChild(card);
         });
