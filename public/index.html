@@ -96,13 +96,13 @@ button:hover{
 textarea{
     background:#0f172a;
     color:white;
-    min-height:280px;
+    min-height:320px;
     resize:vertical;
     border:1px solid #334155;
 }
 
 hr{
-    margin:40px 0;
+    margin:30px 0;
     border:1px solid #334155;
 }
 
@@ -138,6 +138,18 @@ hr{
     font-weight:bold;
 }
 
+.returnBadge{
+    background:#2563eb;
+    color:white;
+    padding:6px 10px;
+    border-radius:8px;
+    display:inline-block;
+    margin-top:10px;
+    margin-left:10px;
+    font-size:13px;
+    font-weight:bold;
+}
+
 .warningPopup{
     position:fixed;
     top:0;
@@ -156,7 +168,7 @@ hr{
     border:4px solid #ef4444;
     padding:40px;
     border-radius:20px;
-    width:500px;
+    width:520px;
     text-align:center;
     box-shadow:0 0 40px rgba(239,68,68,0.7);
     animation:pulse 1s infinite;
@@ -181,17 +193,9 @@ hr{
 }
 
 @keyframes pulse{
-    0%{
-        transform:scale(1);
-    }
-
-    50%{
-        transform:scale(1.03);
-    }
-
-    100%{
-        transform:scale(1);
-    }
+    0%{ transform:scale(1); }
+    50%{ transform:scale(1.03); }
+    100%{ transform:scale(1); }
 }
 
 </style>
@@ -201,36 +205,29 @@ hr{
 
 <h1>✈️ Flight Manager Dashboard</h1>
 
-<!-- ================= WARNING POPUP ================= -->
+<!-- WARNING POPUP -->
 
-<div
-id="warningPopup"
-class="warningPopup"
->
+<div id="warningPopup" class="warningPopup">
 
-<div class="warningBox">
+    <div class="warningBox">
 
-<div class="warningTitle">
-⚠️ OUTDATED TICKET
-</div>
+        <div class="warningTitle">
+            ⚠️ OUTDATED TICKET
+        </div>
 
-<div
-id="warningMessage"
-class="warningText"
-></div>
+        <div id="warningMessage" class="warningText"></div>
 
-<button
-class="closeWarning"
-onclick="closeWarning()"
->
-I Understand
-</button>
+        <button
+        class="closeWarning"
+        onclick="closeWarning()">
+            I Understand
+        </button>
+
+    </div>
 
 </div>
 
-</div>
-
-<!-- ================= UPLOAD ================= -->
+<!-- UPLOAD -->
 
 <div class="card">
 
@@ -270,7 +267,7 @@ Upload Ticket
 
 <hr>
 
-<!-- ================= SEARCH ================= -->
+<!-- SEARCH -->
 
 <h2>Search Tickets</h2>
 
@@ -321,35 +318,10 @@ function parseCustomDate(dateString){
         return normalDate;
     }
 
-    // DD/MM/YYYY
-    if(dateString.includes("/")){
-
-        const parts = dateString.split("/");
-
-        if(parts.length === 3){
-
-            const day = parseInt(parts[0]);
-            const month = parseInt(parts[1]) - 1;
-            const year = parseInt(parts[2]);
-
-            return new Date(year, month, day);
-        }
-    }
-
-    // DD MON YYYY
     const months = {
-        JAN:0,
-        FEB:1,
-        MAR:2,
-        APR:3,
-        MAY:4,
-        JUN:5,
-        JUL:6,
-        AUG:7,
-        SEP:8,
-        OCT:9,
-        NOV:10,
-        DEC:11
+        JAN:0,FEB:1,MAR:2,APR:3,
+        MAY:4,JUN:5,JUL:6,AUG:7,
+        SEP:8,OCT:9,NOV:10,DEC:11
     };
 
     const match =
@@ -367,29 +339,27 @@ function parseCustomDate(dateString){
     return null;
 }
 
-// ================= WARNING SYSTEM =================
+// ================= WARNING =================
 
 function closeWarning(){
 
     document
     .getElementById("warningPopup")
     .style.display = "none";
-
 }
 
 function isExpired(dateString){
 
     if(!dateString) return false;
 
-    const today = new Date();
-
-    today.setHours(0,0,0,0);
-
     const depDate =
     parseCustomDate(dateString);
 
     if(!depDate) return false;
 
+    const today = new Date();
+
+    today.setHours(0,0,0,0);
     depDate.setHours(0,0,0,0);
 
     return depDate < today;
@@ -397,9 +367,13 @@ function isExpired(dateString){
 
 function checkIfTicketExpired(ticket){
 
-    if(!ticket.departure_date) return;
+    const outboundExpired =
+    isExpired(ticket.departure_date);
 
-    if(isExpired(ticket.departure_date)){
+    const returnExpired =
+    isExpired(ticket.return_departure_date);
+
+    if(outboundExpired || returnExpired){
 
         document
         .getElementById("warningPopup")
@@ -409,7 +383,7 @@ function checkIfTicketExpired(ticket){
         .getElementById("warningMessage")
         .innerHTML = `
 
-        This ticket appears to be outdated.
+        This ticket contains outdated flight dates.
 
         <br><br>
 
@@ -418,16 +392,20 @@ function checkIfTicketExpired(ticket){
 
         <br><br>
 
-        <b>Departure Date:</b>
-        ${ticket.departure_date}
+        <b>Outbound:</b>
+        ${ticket.departure_date || "N/A"}
+
+        <br><br>
+
+        <b>Return:</b>
+        ${ticket.return_departure_date || "N/A"}
 
         <br><br>
 
         Please verify carefully before
-        sending reminders to the customer.
+        sending reminders.
         `;
     }
-
 }
 
 // ================= UPLOAD =================
@@ -469,9 +447,7 @@ document
 
         status.innerHTML =
         `<div class="statusError">❌ Upload failed</div>`;
-
     }
-
 });
 
 // ================= SEARCH =================
@@ -491,7 +467,6 @@ document
     if(!query.trim()){
 
         resultsDiv.innerHTML = "";
-
         return;
     }
 
@@ -545,23 +520,20 @@ document
             </p>
 
             <p>
-                🧭 Flight:
-                ${ticket.flight_number || "N/A"}
-            </p>
-
-            <p>
                 📅 ${ticket.departure_date || "No Date"}
             </p>
 
             ${expired ? `
             <div class="expiredBadge">
-            ⚠ EXPIRED TICKET
+            ⚠ EXPIRED
             </div>
             ` : ""}
 
-            <p class="small">
-                Click to inspect full ticket
-            </p>
+            ${ticket.trip_type === "ROUND_TRIP" ? `
+            <div class="returnBadge">
+            🔁 RETURN TRIP
+            </div>
+            ` : ""}
 
             `;
 
@@ -583,19 +555,14 @@ document
 
 Dear ${ticket.customer_name},
 
-We hope you're doing well.
-
-This is a friendly reminder regarding your upcoming flight scheduled for ${ticket.departure_date || "your travel date"}.
+This is a reminder regarding your upcoming flight.
 
 ━━━━━━━━━━━━━━━
-FLIGHT DETAILS
+OUTBOUND FLIGHT
 ━━━━━━━━━━━━━━━
 
 🛫 Route:
 ${ticket.departure_airport} → ${ticket.arrival_airport}
-
-🧭 Flight Number:
-${ticket.flight_number || "N/A"}
 
 📅 Departure Date:
 ${ticket.departure_date || "N/A"}
@@ -603,23 +570,29 @@ ${ticket.departure_date || "N/A"}
 ⏰ Departure Time:
 ${ticket.departure_time || "N/A"}
 
-⌛ Recommended Check-In Time:
-${ticket.checkin_time || "N/A"}
-
 🧾 Booking Reference:
 ${ticket.reference || "N/A"}
 
-🧳 Cabin Luggage:
-${ticket.cabin_luggage || "N/A"}
-
-🛄 Checked Luggage:
-${ticket.checked_luggage || "N/A"}
-
 ━━━━━━━━━━━━━━━
 
-Please ensure you arrive at the airport early enough for check-in and security procedures.
+${ticket.trip_type === "ROUND_TRIP" ? `
 
-Thank you for choosing us and we wish you a safe and pleasant journey ✈️`;
+RETURN FLIGHT
+━━━━━━━━━━━━━━━
+
+🛫 Route:
+${ticket.arrival_airport} → ${ticket.departure_airport}
+
+📅 Return Date:
+${ticket.return_departure_date || "N/A"}
+
+⏰ Return Time:
+${ticket.return_departure_time || "N/A"}
+
+━━━━━━━━━━━━━━━
+` : ""}
+
+Safe travels ✈️`;
 
                 preview.innerHTML = `
 
@@ -643,79 +616,53 @@ Thank you for choosing us and we wish you a safe and pleasant journey ✈️`;
                     ${ticket.reference || "N/A"}
                 </p>
 
+                <hr>
+
+                <h3>Outbound Flight</h3>
+
                 <p>
-                    <span class="highlight">
-                    ✈️ Route:
-                    </span>
+                    ✈️
                     ${ticket.departure_airport}
                     →
                     ${ticket.arrival_airport}
                 </p>
 
                 <p>
-                    <span class="highlight">
-                    🧭 Flight Number:
-                    </span>
-                    ${ticket.flight_number || "N/A"}
+                    📅 ${ticket.departure_date || "N/A"}
                 </p>
 
                 <p>
-                    <span class="highlight">
-                    📅 Departure Date:
-                    </span>
-                    ${ticket.departure_date || "N/A"}
+                    ⏰ ${ticket.departure_time || "N/A"}
                 </p>
 
-                <p>
-                    <span class="highlight">
-                    🛫 Departure Time:
-                    </span>
-                    ${ticket.departure_time || "N/A"}
-                </p>
-
-                <p>
-                    <span class="highlight">
-                    ⏰ Check-In Time:
-                    </span>
-                    ${ticket.checkin_time || "N/A"}
-                </p>
-
-                <p>
-                    <span class="highlight">
-                    🧳 Cabin Luggage:
-                    </span>
-                    ${ticket.cabin_luggage || "N/A"}
-                </p>
-
-                <p>
-                    <span class="highlight">
-                    🛄 Checked Luggage:
-                    </span>
-                    ${ticket.checked_luggage || "N/A"}
-                </p>
-
-                <p>
-                    <span class="highlight">
-                    🔁 Trip Type:
-                    </span>
-                    ${ticket.trip_type || "N/A"}
-                </p>
+                ${ticket.trip_type === "ROUND_TRIP" ? `
 
                 <hr>
 
-                <h3>
-                    WhatsApp Message Preview
-                </h3>
+                <h3>Return Flight</h3>
+
+                <p>
+                    ✈️
+                    ${ticket.arrival_airport}
+                    →
+                    ${ticket.departure_airport}
+                </p>
+
+                <p>
+                    📅 ${ticket.return_departure_date || "N/A"}
+                </p>
+
+                <p>
+                    ⏰ ${ticket.return_departure_time || "N/A"}
+                </p>
+
+                ` : ""}
+
+                <hr>
 
                 <textarea
                 id="messageBox"
                 >${whatsappMessage}</textarea>
-
-                <br>
-
-                <button id="generateBtn">
-                    Generate WhatsApp Message
-                </button>
 
                 <br>
 
@@ -724,18 +671,7 @@ Thank you for choosing us and we wish you a safe and pleasant journey ✈️`;
                 </button>
 
                 </div>
-
                 `;
-
-                document
-                .getElementById("generateBtn")
-                .addEventListener("click", () => {
-
-                    alert(
-                        "✅ WhatsApp message generated successfully."
-                    );
-
-                });
 
                 document
                 .getElementById("sendBtn")
@@ -759,21 +695,16 @@ Thank you for choosing us and we wish you a safe and pleasant journey ✈️`;
                         finalLink,
                         "_blank"
                     );
-
                 });
-
             });
 
             resultsDiv.appendChild(card);
-
         });
 
     }catch(err){
 
         console.error(err);
-
     }
-
 });
 
 </script>
