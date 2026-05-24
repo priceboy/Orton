@@ -537,32 +537,30 @@ document
 
             `;
 
-            card.addEventListener("click", () => {
+    card.addEventListener("click", () => {
 
-                checkIfTicketExpired(ticket);
+    checkIfTicketExpired(ticket);
 
-                document
-                .querySelectorAll(".ticketCard")
-                .forEach(c => {
-                    c.classList.remove("selected");
-                });
+    document
+    .querySelectorAll(".ticketCard")
+    .forEach(c => {
+        c.classList.remove("selected");
+    });
 
-                card.classList.add("selected");
+    card.classList.add("selected");
 
-                const whatsappMessage =
+    // =====================================
+    // ✅ OUTBOUND MESSAGE
+    // =====================================
 
-`✈️ Flight Reminder
-
-Dear ${ticket.customer_name},
-
-This is a reminder regarding your upcoming flight.
+    const outboundMessage = `
 
 ━━━━━━━━━━━━━━━
 OUTBOUND FLIGHT
 ━━━━━━━━━━━━━━━
 
 🛫 Route:
-${ticket.departure_airport} → ${ticket.arrival_airport}
+${ticket.departure_airport || "N/A"} → ${ticket.arrival_airport || "N/A"}
 
 📅 Departure Date:
 ${ticket.departure_date || "N/A"}
@@ -570,18 +568,29 @@ ${ticket.departure_date || "N/A"}
 ⏰ Departure Time:
 ${ticket.departure_time || "N/A"}
 
-🧾 Booking Reference:
-${ticket.reference || "N/A"}
+🧾 Flight Number:
+${ticket.flight_number || "N/A"}
+
+🛄 Check-In Time:
+${ticket.checkin_time || "N/A"}
+
+`;
+
+    // =====================================
+    // ✅ RETURN MESSAGE
+    // =====================================
+
+    const returnMessage =
+    ticket.trip_type === "ROUND_TRIP"
+
+    ? `
 
 ━━━━━━━━━━━━━━━
-
-${ticket.trip_type === "ROUND_TRIP" ? `
-
 RETURN FLIGHT
 ━━━━━━━━━━━━━━━
 
 🛫 Route:
-${ticket.arrival_airport} → ${ticket.departure_airport}
+${ticket.return_departure_airport || "N/A"} → ${ticket.return_arrival_airport || "N/A"}
 
 📅 Return Date:
 ${ticket.return_departure_date || "N/A"}
@@ -589,114 +598,168 @@ ${ticket.return_departure_date || "N/A"}
 ⏰ Return Time:
 ${ticket.return_departure_time || "N/A"}
 
+🧾 Flight Number:
+${ticket.return_flight_number || "N/A"}
+
+🛄 Check-In Time:
+${ticket.return_checkin_time || "N/A"}
+
+`
+
+    : "";
+
+    // =====================================
+    // ✅ FINAL WHATSAPP MESSAGE
+    // =====================================
+
+    const whatsappMessage = `✈️ Flight Reminder
+
+Dear ${ticket.customer_name || "Customer"},
+
+This is a reminder regarding your upcoming flight.
+
+${outboundMessage}
+
+${returnMessage}
+
 ━━━━━━━━━━━━━━━
-` : ""}
+
+🧾 Booking Reference:
+${ticket.reference || "N/A"}
 
 Safe travels ✈️`;
 
-                preview.innerHTML = `
+    // =====================================
+    // ✅ PREVIEW PANEL
+    // =====================================
 
-                <div class="card">
+    preview.innerHTML = `
 
-                <h2>
-                    ${ticket.customer_name}
-                </h2>
+    <div class="card">
 
-                <p>
-                    <span class="highlight">
-                    📞 Phone:
-                    </span>
-                    ${ticket.phone || "N/A"}
-                </p>
+        <h2>
+            ${ticket.customer_name || "Unknown Passenger"}
+        </h2>
 
-                <p>
-                    <span class="highlight">
-                    🧾 Booking Reference:
-                    </span>
-                    ${ticket.reference || "N/A"}
-                </p>
+        <p>
+            <span class="highlight">
+            📞 Phone:
+            </span>
+            ${ticket.phone || "N/A"}
+        </p>
 
-                <hr>
+        <p>
+            <span class="highlight">
+            🧾 Booking Reference:
+            </span>
+            ${ticket.reference || "N/A"}
+        </p>
 
-                <h3>Outbound Flight</h3>
+        <hr>
 
-                <p>
-                    ✈️
-                    ${ticket.departure_airport}
-                    →
-                    ${ticket.arrival_airport}
-                </p>
+        <h3>🛫 Outbound Flight</h3>
 
-                <p>
-                    📅 ${ticket.departure_date || "N/A"}
-                </p>
+        <p>
+            ✈️
+            ${ticket.departure_airport || "N/A"}
+            →
+            ${ticket.arrival_airport || "N/A"}
+        </p>
 
-                <p>
-                    ⏰ ${ticket.departure_time || "N/A"}
-                </p>
+        <p>
+            📅 ${ticket.departure_date || "N/A"}
+        </p>
 
-                ${ticket.trip_type === "ROUND_TRIP" ? `
+        <p>
+            ⏰ ${ticket.departure_time || "N/A"}
+        </p>
 
-                <hr>
+        <p>
+            🧾 Flight:
+            ${ticket.flight_number || "N/A"}
+        </p>
 
-                <h3>Return Flight</h3>
+        <p>
+            🛄 Check-In:
+            ${ticket.checkin_time || "N/A"}
+        </p>
 
-                <p>
-                    ✈️
-                    ${ticket.arrival_airport}
-                    →
-                    ${ticket.departure_airport}
-                </p>
+        ${ticket.trip_type === "ROUND_TRIP" ? `
 
-                <p>
-                    📅 ${ticket.return_departure_date || "N/A"}
-                </p>
+        <hr>
 
-                <p>
-                    ⏰ ${ticket.return_departure_time || "N/A"}
-                </p>
+        <h3>🔁 Return Flight</h3>
 
-                ` : ""}
+        <p>
+            ✈️
+            ${ticket.return_departure_airport || "N/A"}
+            →
+            ${ticket.return_arrival_airport || "N/A"}
+        </p>
 
-                <hr>
+        <p>
+            📅 ${ticket.return_departure_date || "N/A"}
+        </p>
 
-                <textarea
-                id="messageBox"
-                >${whatsappMessage}</textarea>
+        <p>
+            ⏰ ${ticket.return_departure_time || "N/A"}
+        </p>
 
-                <br>
+        <p>
+            🧾 Flight:
+            ${ticket.return_flight_number || "N/A"}
+        </p>
 
-                <button id="sendBtn">
-                    Send To Customer
-                </button>
+        <p>
+            🛄 Check-In:
+            ${ticket.return_checkin_time || "N/A"}
+        </p>
 
-                </div>
-                `;
+        ` : ""}
 
-                document
-                .getElementById("sendBtn")
-                .addEventListener("click", () => {
+        <hr>
 
-                    const editedMessage =
-                    document
-                    .getElementById("messageBox")
-                    .value;
+        <textarea
+        id="messageBox"
+        >${whatsappMessage}</textarea>
 
-                    const cleanPhone =
-                    (ticket.phone || "")
-                    .replace(/\+/g,"")
-                    .replace(/\s/g,"");
+        <br>
 
-                    const finalLink =
+        <button id="sendBtn">
+            Send To Customer
+        </button>
+
+    </div>
+    `;
+
+    // =====================================
+    // ✅ WHATSAPP BUTTON
+    // =====================================
+
+    document
+    .getElementById("sendBtn")
+    .addEventListener("click", () => {
+
+        const editedMessage =
+        document
+        .getElementById("messageBox")
+        .value;
+
+        const cleanPhone =
+        (ticket.phone || "")
+        .replace(/\+/g,"")
+        .replace(/\s/g,"");
+
+        const finalLink =
 
 `https://wa.me/${cleanPhone}?text=${encodeURIComponent(editedMessage)}`;
 
-                    window.open(
-                        finalLink,
-                        "_blank"
-                    );
-                });
-            });
+        window.open(
+            finalLink,
+            "_blank"
+        );
+    });
+});
 
             resultsDiv.appendChild(card);
         });
