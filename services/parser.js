@@ -14,7 +14,7 @@ function getCheckInTime(time) {
 function parseTicket(text) {
 
     // =========================
-    // NAME
+    // ✅ NAME EXTRACTION
     // =========================
 
     const nameMatch =
@@ -24,11 +24,13 @@ function parseTicket(text) {
     nameMatch?.[1]?.trim() || null;
 
     if (name) {
-        name = name.replace(/[^A-Z\s\/]/g, "");
+
+        name =
+        name.replace(/[^A-Z\s\/]/g, "");
     }
 
     // =========================
-    // HEADER DESTINATION
+    // ✅ HEADER DESTINATION
     // =========================
 
     const headerMatch =
@@ -38,13 +40,17 @@ function parseTicket(text) {
     headerMatch?.[1]?.trim();
 
     const cityToAirport = {
+
         "DOUALA": "DLA",
+
         "KIGALI": "KGL",
+
         "PARIS": "CDG",
+
         "BANGUI": "BGF"
     };
 
-    let finalDestination = null;
+    let headerArrival = null;
 
     if (headerDestination) {
 
@@ -53,12 +59,12 @@ function parseTicket(text) {
         .split(",")[0]
         .trim();
 
-        finalDestination =
+        headerArrival =
         cityToAirport[city] || null;
     }
 
     // =========================
-    // SPLIT SEGMENTS
+    // ✅ EXTRACT SEGMENTS
     // =========================
 
     const segments =
@@ -67,100 +73,127 @@ function parseTicket(text) {
 
     const legs = [];
 
-    // =========================
-    // EXTRACT ALL LEGS
-    // =========================
+    for (let seg of segments) {
 
-    segments.forEach(seg => {
+        const matches =
+        seg.match(/\n([A-Z]{3})\n/g);
 
-        const airportMatches =
-        [...seg.matchAll(/\n([A-Z]{3})\n/g)];
+        if (!matches || matches.length < 2)
+            continue;
 
-        if (airportMatches.length < 2)
-            return;
+        const airports =
+        matches.map(a =>
+            a.replace(/\n/g, "")
+        );
 
-        const from =
-        airportMatches[0][1];
+        // =========================
+        // ✅ DATE
+        // =========================
 
-        const to =
-        airportMatches[1][1];
+        const segmentDate =
 
-        const depDate =
         seg.match(
-            /\b\d{1,2}\s+[A-Z]{3}\s+\d{4}\b/i
-        )?.[0] || null;
+            /\b(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun),?\s+\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4}\b/i
+        )?.[0]
 
-        const depTime =
+        ||
+
+        seg.match(
+            /\b\d{1,2}\s+[A-Z]{3,9}\s+\d{4}\b/i
+        )?.[0]
+
+        ||
+
+        null;
+
+        // =========================
+        // ✅ TIME
+        // =========================
+
+        const segmentTime =
         seg.match(
             /Departing At:\s*\n?(\d{2}:\d{2})/i
         )?.[1] || null;
 
-        const flightNo =
+        // =========================
+        // ✅ FLIGHT NUMBER
+        // =========================
+
+        const segmentFlight =
         seg.match(
             /\b([A-Z]{2}\s?\d{3,4})\b/
         )?.[1] || null;
 
+        // =========================
+        // ✅ SAVE LEG
+        // =========================
+
         legs.push({
-            from,
-            to,
-            depDate,
-            depTime,
-            flightNo
+
+            from: airports[0],
+
+            to: airports[1],
+
+            departure_date: segmentDate,
+
+            departure_time: segmentTime,
+
+            flight_number: segmentFlight
         });
-    });
-
-    // =========================
-    // OUTBOUND FLIGHT
-    // =========================
-
-    const firstLeg = legs[0] || {};
-
-    let departureAirport =
-    firstLeg.from || null;
-
-    let arrivalAirport =
-    firstLeg.to || null;
-
-    // =========================
-    // FIND FINAL DESTINATION
-    // =========================
-
-    if (finalDestination) {
-
-        arrivalAirport =
-        finalDestination;
     }
 
     // =========================
-    // DETECT RETURN LEG
+    // ✅ DETERMINE OUTBOUND
+    // =========================
+
+    const outboundLeg =
+    legs[0] || {};
+
+    let departureAirport =
+    outboundLeg.from || null;
+
+    let arrivalAirport =
+    outboundLeg.to || null;
+
+    // =========================
+    // ✅ OVERRIDE FINAL DESTINATION
+    // =========================
+
+    if (headerArrival) {
+
+        arrivalAirport =
+        headerArrival;
+    }
+
+    // =========================
+    // ✅ DETECT RETURN LEG
     // =========================
 
     let returnLeg = null;
 
-    for (let leg of legs) {
+    if (
+        arrivalAirport &&
+        departureAirport
+    ) {
 
-        // RETURN starts where
-        // outbound destination becomes departure
+        returnLeg =
+        legs.find(leg =>
 
-        if (
             leg.from === arrivalAirport &&
-            leg.to === departureAirport
-        ) {
 
-            returnLeg = leg;
-            break;
-        }
+            leg.to === departureAirport
+        );
     }
 
     // =========================
-    // TRIP TYPE
+    // ✅ ROUND TRIP CHECK
     // =========================
 
     const isRoundTrip =
     !!returnLeg;
 
     // =========================
-    // AIRLINE
+    // ✅ AIRLINE
     // =========================
 
     const airline =
@@ -169,7 +202,7 @@ function parseTicket(text) {
     )?.[1]?.trim() || null;
 
     // =========================
-    // BAGGAGE
+    // ✅ BAGGAGE
     // =========================
 
     const cabin =
@@ -183,7 +216,15 @@ function parseTicket(text) {
     )?.[1] || null;
 
     // =========================
-    // FINAL OUTPUT
+    // ✅ DEBUG LOGS
+    // =========================
+
+    console.log("LEGS:", legs);
+
+    console.log("RETURN LEG:", returnLeg);
+
+    // =========================
+    // ✅ FINAL OUTPUT
     // =========================
 
     return {
@@ -197,19 +238,21 @@ function parseTicket(text) {
         arrivalAirport,
 
         departure_date:
-        firstLeg.depDate,
+        outboundLeg.departure_date || null,
 
         departure_time:
-        firstLeg.depTime,
+        outboundLeg.departure_time || null,
 
         checkin_time:
-        getCheckInTime(firstLeg.depTime),
+        getCheckInTime(
+            outboundLeg.departure_time
+        ),
 
         airline_name:
         airline,
 
         flight_number:
-        firstLeg.flightNo,
+        outboundLeg.flight_number || null,
 
         cabin_luggage:
         cabin,
@@ -223,7 +266,7 @@ function parseTicket(text) {
         : "ONE_WAY",
 
         // =========================
-        // RETURN DATA
+        // ✅ RETURN TRIP DATA
         // =========================
 
         return_departure_airport:
@@ -233,18 +276,18 @@ function parseTicket(text) {
         returnLeg?.to || null,
 
         return_departure_date:
-        returnLeg?.depDate || null,
+        returnLeg?.departure_date || null,
 
         return_departure_time:
-        returnLeg?.depTime || null,
+        returnLeg?.departure_time || null,
 
         return_checkin_time:
         getCheckInTime(
-            returnLeg?.depTime
+            returnLeg?.departure_time
         ),
 
         return_flight_number:
-        returnLeg?.flightNo || null
+        returnLeg?.flight_number || null
     };
 }
 
