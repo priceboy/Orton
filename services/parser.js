@@ -54,11 +54,8 @@ function parseTicket(text) {
     const cityToAirport = {
 
         "DOUALA": "DLA",
-
         "KIGALI": "KGL",
-
         "PARIS": "CDG",
-
         "BANGUI": "BGF"
     };
 
@@ -80,11 +77,11 @@ function parseTicket(text) {
     // SPLIT SEGMENTS
     // =========================
 
-    const rawParts =
+    const parts =
     text.split("DEPARTURE:");
 
     const segments =
-    rawParts.slice(1);
+    parts.slice(1);
 
     const legs = [];
 
@@ -131,7 +128,6 @@ function parseTicket(text) {
             ].includes(code);
         });
 
-        // REMOVE DUPLICATES
         const airports =
         [...new Set(airportMatches)];
 
@@ -147,14 +143,14 @@ function parseTicket(text) {
         // =========================
         // DATE EXTRACTION
         // =========================
-        // DATE IS USUALLY ABOVE
-        // THE DEPARTURE BLOCK
+        // DATE IS ABOVE EACH
+        // DEPARTURE BLOCK
         // =========================
 
         const beforeSegment =
-        rawParts[index];
+        parts[index];
 
-        const foundDates =
+        const dateMatches =
 
         [...beforeSegment.matchAll(
 
@@ -163,18 +159,12 @@ function parseTicket(text) {
 
         .map(m => m[0]);
 
-        let depDate =
-        foundDates[foundDates.length - 1]
+        // TAKE LAST DATE BEFORE SEGMENT
 
-        ||
-
-        seg.match(
-            /\b\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+\d{4}\b/i
-        )?.[0]
-
-        ||
-
-        null;
+        const depDate =
+        dateMatches[
+            dateMatches.length - 1
+        ] || null;
 
         // =========================
         // TIME
@@ -217,13 +207,9 @@ function parseTicket(text) {
         legs.push({
 
             from,
-
             to,
-
             depDate,
-
             depTime,
-
             flightNo
         });
     });
@@ -267,10 +253,6 @@ function parseTicket(text) {
 
         const leg = legs[i];
 
-        // RETURN STARTS WHEN
-        // FINAL DESTINATION
-        // BECOMES DEPARTURE
-
         if (
 
             leg.from === arrivalAirport &&
@@ -313,6 +295,8 @@ function parseTicket(text) {
     // =========================
     // CABIN LUGGAGE
     // =========================
+    // BELOW FLIGHT SEGMENTS
+    // =========================
 
     let cabin =
 
@@ -323,19 +307,13 @@ function parseTicket(text) {
     ||
 
     text.match(
-        /Cabin\s*Baggage\s*:\s*([^\n]+)/i
+        /Cabin\s*Baggage\s*:?[\s\n]*([^\n]+)/i
     )?.[1]
 
     ||
 
     text.match(
-        /Cabin\s*Baggage\s*\n\s*([^\n]+)/i
-    )?.[1]
-
-    ||
-
-    text.match(
-        /CABIN\s*:?[\s\n]*([0-9]+\s*(?:KG|KGS))/i
+        /CABIN\s*:?[\s\n]*([^\n]+)/i
     )?.[1]
 
     ||
@@ -364,13 +342,7 @@ function parseTicket(text) {
     ||
 
     text.match(
-        /Checked\s*Baggage\s*:\s*([^\n]+)/i
-    )?.[1]
-
-    ||
-
-    text.match(
-        /Checked\s*Baggage\s*\n\s*([^\n]+)/i
+        /Checked\s*Baggage\s*:?[\s\n]*([^\n]+)/i
     )?.[1]
 
     ||
@@ -437,7 +409,7 @@ function parseTicket(text) {
         firstLeg.flightNo || null,
 
         // =========================
-        // AIRLINE / LUGGAGE
+        // AIRLINE / BAGGAGE
         // =========================
 
         airline_name:
