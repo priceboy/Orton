@@ -150,6 +150,14 @@ hr{
     font-weight:bold;
 }
 
+.bagBox{
+    background:#0f172a;
+    padding:14px;
+    border-radius:10px;
+    margin-top:12px;
+    border:1px solid #334155;
+}
+
 .warningPopup{
     position:fixed;
     top:0;
@@ -170,8 +178,6 @@ hr{
     border-radius:20px;
     width:520px;
     text-align:center;
-    box-shadow:0 0 40px rgba(239,68,68,0.7);
-    animation:pulse 1s infinite;
 }
 
 .warningTitle{
@@ -203,20 +209,12 @@ hr{
     font-size:18px;
 }
 
-@keyframes pulse{
-    0%{ transform:scale(1); }
-    50%{ transform:scale(1.03); }
-    100%{ transform:scale(1); }
-}
-
 </style>
 </head>
 
 <body>
 
 <h1>✈️ Flight Manager Dashboard</h1>
-
-<!-- WARNING POPUP -->
 
 <div id="warningPopup" class="warningPopup">
 
@@ -323,12 +321,6 @@ function parseCustomDate(dateString){
 
     if(!dateString) return null;
 
-    let normalDate = new Date(dateString);
-
-    if(!isNaN(normalDate)){
-        return normalDate;
-    }
-
     const months = {
         JAN:0,FEB:1,MAR:2,APR:3,
         MAY:4,JUN:5,JUL:6,AUG:7,
@@ -340,11 +332,11 @@ function parseCustomDate(dateString){
 
     if(match){
 
-        const day = parseInt(match[1]);
-        const month = months[match[2].toUpperCase()];
-        const year = parseInt(match[3]);
-
-        return new Date(year, month, day);
+        return new Date(
+            parseInt(match[3]),
+            months[match[2].toUpperCase()],
+            parseInt(match[1])
+        );
     }
 
     return null;
@@ -394,12 +386,8 @@ function checkIfTicketExpired(ticket){
         .getElementById("warningMessage")
         .innerHTML = `
 
-        This ticket contains outdated flight dates.
-
-        <br><br>
-
         <b>Passenger:</b>
-        ${ticket.customer_name}
+        ${ticket.customer_name || "Unknown"}
 
         <br><br>
 
@@ -411,10 +399,6 @@ function checkIfTicketExpired(ticket){
         <b>Return:</b>
         ${ticket.return_departure_date || "N/A"}
 
-        <br><br>
-
-        Please verify carefully before
-        sending reminders.
         `;
     }
 }
@@ -489,6 +473,8 @@ document
         const data =
         await res.json();
 
+        console.log("SEARCH RESULTS:", data);
+
         resultsDiv.innerHTML = "";
 
         if(data.length === 0){
@@ -503,6 +489,8 @@ document
         }
 
         data.forEach(ticket => {
+
+            console.log("TICKET:", ticket);
 
             const expired =
             isExpired(ticket.departure_date);
@@ -560,88 +548,62 @@ document
 
                 card.classList.add("selected");
 
-                // =========================
-                // OUTBOUND MESSAGE
-                // =========================
-
                 const outboundMessage =
 
 `✈️ OUTBOUND FLIGHT REMINDER
 
-Dear ${ticket.customer_name},
-
-This is a reminder regarding your upcoming outbound flight.
-
-━━━━━━━━━━━━━━━
-OUTBOUND FLIGHT
-━━━━━━━━━━━━━━━
+Dear ${ticket.customer_name || "Customer"},
 
 🛫 Route:
-${ticket.departure_airport} → ${ticket.arrival_airport}
+${ticket.departure_airport || "N/A"} → ${ticket.arrival_airport || "N/A"}
 
-📅 Departure Date:
+📅 Date:
 ${ticket.departure_date || "N/A"}
 
-⏰ Departure Time:
+⏰ Time:
 ${ticket.departure_time || "N/A"}
 
-🧾 Booking Reference:
+🧾 Reference:
 ${ticket.reference || "N/A"}
 
 Safe travels ✈️`;
-
-                // =========================
-                // RETURN MESSAGE
-                // =========================
 
                 const returnMessage =
 
 `✈️ RETURN FLIGHT REMINDER
 
-Dear ${ticket.customer_name},
-
-This is a reminder regarding your return flight.
-
-━━━━━━━━━━━━━━━
-RETURN FLIGHT
-━━━━━━━━━━━━━━━
+Dear ${ticket.customer_name || "Customer"},
 
 🛫 Route:
-${ticket.return_departure_airport || ticket.arrival_airport}
+${ticket.return_departure_airport || "N/A"}
 →
-${ticket.return_arrival_airport || ticket.departure_airport}
+${ticket.return_arrival_airport || "N/A"}
 
-📅 Return Date:
+📅 Date:
 ${ticket.return_departure_date || "N/A"}
 
-⏰ Return Time:
+⏰ Time:
 ${ticket.return_departure_time || "N/A"}
 
-🧾 Booking Reference:
+🧾 Reference:
 ${ticket.reference || "N/A"}
 
-We wish you a pleasant journey ✈️`;
+Pleasant journey ✈️`;
 
                 preview.innerHTML = `
 
                 <div class="card">
 
                 <h2>
-                    ${ticket.customer_name}
+                    ${ticket.customer_name || "Unknown Passenger"}
                 </h2>
 
                 <p>
-                    <span class="highlight">
-                    📞 Phone:
-                    </span>
-                    ${ticket.phone || "N/A"}
+                    📞 ${ticket.phone || "N/A"}
                 </p>
 
                 <p>
-                    <span class="highlight">
-                    🧾 Booking Reference:
-                    </span>
-                    ${ticket.reference || "N/A"}
+                    🧾 ${ticket.reference || "N/A"}
                 </p>
 
                 <hr>
@@ -672,6 +634,20 @@ We wish you a pleasant journey ✈️`;
                     🛩 Flight:
                     ${ticket.flight_number || "N/A"}
                 </p>
+
+                <div class="bagBox">
+
+                    <p>
+                        🧳 Cabin:
+                        ${ticket.cabin_luggage || "N/A"}
+                    </p>
+
+                    <p>
+                        🛄 Checked:
+                        ${ticket.checked_luggage || "N/A"}
+                    </p>
+
+                </div>
 
                 ${ticket.trip_type === "ROUND_TRIP" ? `
 
@@ -747,10 +723,6 @@ We wish you a pleasant journey ✈️`;
                 </div>
                 `;
 
-                // =========================
-                // SEND OUTBOUND
-                // =========================
-
                 document
                 .getElementById("sendOutboundBtn")
                 .addEventListener("click", () => {
@@ -774,10 +746,6 @@ We wish you a pleasant journey ✈️`;
                         "_blank"
                     );
                 });
-
-                // =========================
-                // SEND RETURN
-                // =========================
 
                 if(ticket.trip_type === "ROUND_TRIP"){
 
