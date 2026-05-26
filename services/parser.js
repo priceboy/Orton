@@ -1,21 +1,52 @@
 function getCheckInTime(time) {
 
-    if (!time) return null;
+    // =====================================
+    // SAFETY CHECKS
+    // =====================================
 
-    let [h, m] = time.split(":").map(Number);
+    if (
+        !time ||
+        typeof time !== "string" ||
+        !time.includes(":")
+    ) {
+        return null;
+    }
+
+    const parts = time.split(":");
+
+    if (parts.length !== 2)
+        return null;
+
+    let h = parseInt(parts[0]);
+    let m = parseInt(parts[1]);
+
+    if (
+        isNaN(h) ||
+        isNaN(m)
+    ) {
+        return null;
+    }
+
+    // =====================================
+    // SUBTRACT 4 HOURS
+    // =====================================
 
     h -= 4;
 
-    if (h < 0) h += 24;
+    if (h < 0)
+        h += 24;
 
-    return `${h.toString().padStart(2, '0')}:${m
+    return `${h
         .toString()
-        .padStart(2, '0')}`;
+        .padStart(2, "0")}:${m
+        .toString()
+        .padStart(2, "0")}`;
 }
 
 function cleanValue(value) {
 
-    if (!value) return null;
+    if (!value)
+        return null;
 
     return value
         .replace(/\s+/g, " ")
@@ -57,9 +88,11 @@ function parseTicket(text) {
 
         if (match?.[1]) {
 
-            customerName = cleanValue(match[1]);
+            customerName =
+            cleanValue(match[1]);
 
-            customerName = customerName
+            customerName =
+            customerName
                 .replace(/[^A-Z\/\s]/gi, "")
                 .trim();
 
@@ -100,7 +133,7 @@ function parseTicket(text) {
     }
 
     // =====================================
-    // EXTRACT ALL DATES
+    // EXTRACT DATES
     // =====================================
 
     const allDates =
@@ -112,13 +145,11 @@ function parseTicket(text) {
 
     .map(m => cleanValue(m[0]));
 
-    // REMOVE DUPLICATES
-
     const uniqueDates =
     [...new Set(allDates)];
 
     // =====================================
-    // EXTRACT ALL TIMES
+    // EXTRACT TIMES
     // =====================================
 
     const allTimes =
@@ -143,13 +174,11 @@ function parseTicket(text) {
 
     .map(m => cleanValue(m[1]));
 
-    // REMOVE DUPLICATES
-
     const uniqueFlightNumbers =
     [...new Set(allFlightNumbers)];
 
     // =====================================
-    // EXTRACT AIRPORTS
+    // EXTRACT AIRPORT CODES
     // =====================================
 
     const airportMatches =
@@ -186,62 +215,75 @@ function parseTicket(text) {
     });
 
     // =====================================
-    // BUILD FLIGHT LEGS
+    // BUILD LEGS
     // =====================================
 
     const legs = [];
 
-    for (let i = 0; i < airportMatches.length - 1; i++) {
+    for (
+        let i = 0;
+        i < airportMatches.length - 1;
+        i += 2
+    ) {
 
-        const from = airportMatches[i];
-        const to = airportMatches[i + 1];
+        const from =
+        airportMatches[i];
 
-        // SKIP SAME AIRPORT
+        const to =
+        airportMatches[i + 1];
+
+        // =====================================
+        // SAFETY
+        // =====================================
+
+        if (!from || !to)
+            continue;
+
         if (from === to)
             continue;
 
-        // VALID ROUTE
-        if (
-            from.length === 3 &&
-            to.length === 3
-        ) {
+        // =====================================
+        // AVOID DUPLICATES
+        // =====================================
 
-            // AVOID DUPLICATE LEGS
-            const alreadyExists =
-            legs.find(l =>
-                l.from === from &&
-                l.to === to
-            );
+        const exists =
+        legs.find(l =>
+            l.from === from &&
+            l.to === to
+        );
 
-            if (!alreadyExists) {
+        if (exists)
+            continue;
 
-                legs.push({
+        // =====================================
+        // SAVE LEG
+        // =====================================
 
-                    from,
-                    to,
+        legs.push({
 
-                    departure_date:
-                    uniqueDates[legs.length] || null,
+            from,
+            to,
 
-                    departure_time:
-                    allTimes[legs.length] || null,
+            departure_date:
+            uniqueDates[legs.length] || null,
 
-                    flight_number:
-                    uniqueFlightNumbers[legs.length] || null
-                });
-            }
-        }
+            departure_time:
+            allTimes[legs.length] || null,
+
+            flight_number:
+            uniqueFlightNumbers[legs.length] || null
+        });
     }
 
     // =====================================
-    // DEBUG LEGS
+    // DEBUG
     // =====================================
 
     console.log("========== LEGS ==========");
     console.log(legs);
 
     // =====================================
-    // OUTBOUND LEG
+    // OUTBOUND
     // =====================================
 
     const outboundLeg =
@@ -253,7 +295,9 @@ function parseTicket(text) {
     let arrivalAirport =
     outboundLeg.to || null;
 
-    // HEADER OVERRIDE
+    // =====================================
+    // HEADER DESTINATION OVERRIDE
+    // =====================================
 
     if (outboundDestination) {
 
@@ -271,13 +315,20 @@ function parseTicket(text) {
 
     for (const leg of legs.slice(1)) {
 
-        // IF SEGMENTS CONTINUE AFTER DESTINATION
+        // =====================================
+        // IF FLIGHTS CONTINUE
+        // AFTER DESTINATION
+        // =====================================
 
-        if (leg.from === arrivalAirport) {
+        if (
+            leg.from === arrivalAirport
+        ) {
 
             isRoundTrip = true;
 
+            // =====================================
             // REVERSED ROUTE
+            // =====================================
 
             if (
                 leg.to === departureAirport
@@ -293,12 +344,18 @@ function parseTicket(text) {
     // FALLBACK RETURN LEG
     // =====================================
 
-    if (!returnLeg && isRoundTrip) {
+    if (
+        !returnLeg &&
+        isRoundTrip
+    ) {
 
         returnLeg = {
 
-            from: arrivalAirport,
-            to: departureAirport,
+            from:
+            arrivalAirport,
+
+            to:
+            departureAirport,
 
             departure_date:
             uniqueDates[1] || null,
@@ -339,16 +396,17 @@ function parseTicket(text) {
 
     const cabinPatterns = [
 
-        /Cabin\s*Baggage[\s\S]{0,80}?(\d+\s?(?:KG|PC))/i,
+        /Cabin\s*Baggage[\s\S]{0,100}?(\d+\s?(?:KG|PC))/i,
 
-        /CABIN[\s\S]{0,80}?(\d+\s?(?:KG|PC))/i,
+        /CABIN[\s\S]{0,100}?(\d+\s?(?:KG|PC))/i,
 
-        /Hand\s*Baggage[\s\S]{0,80}?(\d+\s?(?:KG|PC))/i
+        /Hand\s*Baggage[\s\S]{0,100}?(\d+\s?(?:KG|PC))/i
     ];
 
     for (const pattern of cabinPatterns) {
 
-        const match = text.match(pattern);
+        const match =
+        text.match(pattern);
 
         if (match?.[1]) {
 
@@ -367,16 +425,17 @@ function parseTicket(text) {
 
     const checkedPatterns = [
 
-        /Checked\s*Baggage[\s\S]{0,80}?(\d+\s?(?:KG|PC))/i,
+        /Checked\s*Baggage[\s\S]{0,100}?(\d+\s?(?:KG|PC))/i,
 
-        /CHECKED[\s\S]{0,80}?(\d+\s?(?:KG|PC))/i,
+        /CHECKED[\s\S]{0,100}?(\d+\s?(?:KG|PC))/i,
 
-        /Baggage\s*Allowance[\s\S]{0,80}?(\d+\s?(?:KG|PC))/i
+        /Baggage\s*Allowance[\s\S]{0,100}?(\d+\s?(?:KG|PC))/i
     ];
 
     for (const pattern of checkedPatterns) {
 
-        const match = text.match(pattern);
+        const match =
+        text.match(pattern);
 
         if (match?.[1]) {
 
@@ -471,7 +530,7 @@ function parseTicket(text) {
         : "ONE_WAY",
 
         // =====================================
-        // RETURN TRIP
+        // RETURN FLIGHT
         // =====================================
 
         return_departure_airport:
