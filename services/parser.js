@@ -22,34 +22,42 @@ function cleanText(text) {
         .replace(/\n{2,}/g, "\n");
 }
 
+// ======================================
+// NAME EXTRACTION
+// ======================================
+
 function extractName(text) {
 
-    // MOST RELIABLE PATTERN
-    let match = text.match(
-        /(?:MR|MRS|MS|MISS)\s+([A-Z\/\s]+)/i
-    );
+    const patterns = [
 
-    if (!match) {
+        /(?:MR|MRS|MS|MISS)\s+([A-Z\/\s]+)/i,
 
-        match = text.match(
-            /PASSENGER(?: NAME)?[:\s]+([A-Z\/\s]+)/i
-        );
+        /PASSENGER(?: NAME)?[:\s]+([A-Z\/\s]+)/i,
+
+        /TRAVELER(?: NAME)?[:\s]+([A-Z\/\s]+)/i,
+
+        /»\s*([A-Z\s\/]+?)Check-In/i
+    ];
+
+    for (const pattern of patterns) {
+
+        const match = text.match(pattern);
+
+        if (match?.[1]) {
+
+            return match[1]
+                .replace(/[^A-Z\/\s]/gi, "")
+                .replace(/\s+/g, " ")
+                .trim();
+        }
     }
 
-    if (!match) {
-
-        match = text.match(
-            /»\s*([A-Z\s\/]+?)Check-In/i
-        );
-    }
-
-    if (!match) return null;
-
-    return match[1]
-        .replace(/[^A-Z\/\s]/gi, "")
-        .replace(/\s+/g, " ")
-        .trim();
+    return null;
 }
+
+// ======================================
+// HEADER DESTINATION
+// ======================================
 
 function extractHeaderDestination(text) {
 
@@ -69,20 +77,32 @@ function extractHeaderDestination(text) {
         BANGUI: "BGF",
         YAOUNDE: "NSI",
         BRUSSELS: "BRU",
-        ISTANBUL: "IST"
+        ISTANBUL: "IST",
+        LONDON: "LHR",
+        DUBAI: "DXB"
     };
 
     return cityMap[city] || null;
 }
 
-function extractDates(text) {
+// ======================================
+// GLOBAL DATES
+// ======================================
+
+function extractAllDates(text) {
 
     return [
+
         ...text.matchAll(
             /\b\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+\d{4}\b/gi
         )
+
     ].map(m => m[0]);
 }
+
+// ======================================
+// BAGGAGE
+// ======================================
 
 function extractBaggage(text, type) {
 
@@ -122,6 +142,39 @@ function extractBaggage(text, type) {
     return null;
 }
 
+// ======================================
+// DATE ABOVE SEGMENT
+// ======================================
+
+function extractDateAboveSegment(fullText, segmentText) {
+
+    const index = fullText.indexOf(segmentText);
+
+    if (index === -1) return null;
+
+    const beforeText = fullText.substring(
+        Math.max(0, index - 500),
+        index
+    );
+
+    const dates = [
+
+        ...beforeText.matchAll(
+            /\b\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+\d{4}\b/gi
+        )
+
+    ].map(m => m[0]);
+
+    if (dates.length === 0)
+        return null;
+
+    return dates[dates.length - 1];
+}
+
+// ======================================
+// MAIN PARSER
+// ======================================
+
 function parseTicket(text) {
 
     text = cleanText(text);
@@ -134,7 +187,7 @@ function parseTicket(text) {
         extractName(text);
 
     // ======================================
-    // HEADER DESTINATION
+    // FINAL DESTINATION
     // ======================================
 
     const finalDestination =
@@ -145,10 +198,10 @@ function parseTicket(text) {
     // ======================================
 
     const globalDates =
-        extractDates(text);
+        extractAllDates(text);
 
     // ======================================
-    // SEGMENTS
+    // SPLIT SEGMENTS
     // ======================================
 
     const rawSegments =
@@ -165,6 +218,7 @@ function parseTicket(text) {
         const airportMatches = [
 
             ...segment.matchAll(/\b[A-Z]{3}\b/g)
+
         ]
 
         .map(m => m[0])
@@ -212,7 +266,7 @@ function parseTicket(text) {
         // TIME
         // ======================================
 
-        let depTime =
+        const depTime =
 
             segment.match(
                 /Departing At:\s*([0-9]{2}:[0-9]{2})/i
@@ -221,7 +275,7 @@ function parseTicket(text) {
             ||
 
             segment.match(
-                /\b([0-9]{2}:[0-9]{2})\b/
+                /\b([0-9]{2}:\d{2})\b/
             )?.[1]
 
             ||
@@ -244,41 +298,29 @@ function parseTicket(text) {
 
         // ======================================
         // DATE
-        // IMPORTANT:
-        // RETURN DATE IS ABOVE SEGMENT
         // ======================================
 
         let depDate = null;
 
-        // GET TEXT BEFORE THIS SEGMENT
-        const fullIndex =
-            text.indexOf(segment);
+        // FIRST LEG = OUTBOUND DATE
+        // SHOULD USE FIRST GLOBAL DATE
 
-        const beforeText =
-            text.substring(
-                Math.max(0, fullIndex - 400),
-                fullIndex
-            );
-
-        const beforeDates = [
-
-            ...beforeText.matchAll(
-                /\b\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+\d{4}\b/gi
-            )
-
-        ].map(m => m[0]);
-
-        if (beforeDates.length > 0) {
+        if (index === 0) {
 
             depDate =
-            beforeDates[beforeDates.length - 1];
+                globalDates[0] || null;
         }
 
-        // FALLBACK
-        if (!depDate) {
+        // OTHER LEGS
+        // DATE IS ABOVE SEGMENT
+
+        else {
 
             depDate =
-            globalDates[index] || null;
+                extractDateAboveSegment(
+                    text,
+                    segment
+                );
         }
 
         legs.push({
@@ -307,37 +349,38 @@ function parseTicket(text) {
         outboundLeg.to || null;
 
     // HEADER OVERRIDE
+
     if (finalDestination) {
 
         arrival_airport =
-        finalDestination;
+            finalDestination;
     }
 
     // ======================================
-    // DETECT ROUND TRIP
+    // ROUND TRIP DETECTION
     // ======================================
 
     let isRoundTrip = false;
 
-    // IF MORE LEGS EXIST AFTER ARRIVAL
-    // THEN IT IS ROUND TRIP
+    const returnStarter = legs.find(
+        (leg, idx) => {
 
-    const extraLegExists =
+            if (idx === 0)
+                return false;
 
-        legs.some((leg, idx) => {
+            return (
+                leg.from === arrival_airport
+            );
+        }
+    );
 
-            if (idx === 0) return false;
-
-            return leg.from === arrival_airport;
-        });
-
-    if (extraLegExists) {
+    if (returnStarter) {
 
         isRoundTrip = true;
     }
 
     // ======================================
-    // RETURN TRIP
+    // RETURN
     // ======================================
 
     let return_departure_airport = null;
@@ -362,7 +405,8 @@ function parseTicket(text) {
         const returnLeg = legs.find(
             (leg, idx) => {
 
-                if (idx === 0) return false;
+                if (idx === 0)
+                    return false;
 
                 return (
                     leg.from ===
@@ -371,7 +415,10 @@ function parseTicket(text) {
             }
         );
 
-        console.log("RETURN LEG:", returnLeg);
+        console.log(
+            "RETURN LEG:",
+            returnLeg
+        );
 
         if (returnLeg) {
 
@@ -415,6 +462,24 @@ function parseTicket(text) {
 
     const checked_luggage =
         extractBaggage(text, "checked");
+
+    console.log("FINAL PARSED:", {
+
+        customer_name,
+
+        departure_airport,
+
+        arrival_airport,
+
+        departure_date:
+            outboundLeg.depDate,
+
+        return_departure_date,
+
+        cabin_luggage,
+
+        checked_luggage
+    });
 
     // ======================================
     // FINAL OUTPUT
