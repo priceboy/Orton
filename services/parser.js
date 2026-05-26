@@ -1,7 +1,7 @@
 function getCheckInTime(time) {
 
     // =====================================
-    // SAFETY CHECKS
+    // SAFETY
     // =====================================
 
     if (
@@ -28,7 +28,7 @@ function getCheckInTime(time) {
     }
 
     // =====================================
-    // SUBTRACT 4 HOURS
+    // CHECK-IN = 4 HOURS BEFORE
     // =====================================
 
     h -= 4;
@@ -43,6 +43,10 @@ function getCheckInTime(time) {
         .padStart(2, "0")}`;
 }
 
+// =====================================
+// CLEAN VALUE
+// =====================================
+
 function cleanValue(value) {
 
     if (!value)
@@ -54,10 +58,14 @@ function cleanValue(value) {
         .trim();
 }
 
+// =====================================
+// MAIN PARSER
+// =====================================
+
 function parseTicket(text) {
 
     // =====================================
-    // CLEAN TEXT
+    // CLEAN PDF TEXT
     // =====================================
 
     text = text
@@ -133,127 +141,129 @@ function parseTicket(text) {
     }
 
     // =====================================
-    // EXTRACT DATES
+    // SPLIT SEGMENTS
     // =====================================
 
-    const allDates =
+    const splitSegments =
+    text.split("DEPARTURE:");
 
-    [...text.matchAll(
+    const segments =
+    splitSegments.slice(1);
 
-        /\b\d{1,2}\s+(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+\d{4}\b/gi
-    )]
-
-    .map(m => cleanValue(m[0]));
-
-    const uniqueDates =
-    [...new Set(allDates)];
-
-    // =====================================
-    // EXTRACT TIMES
-    // =====================================
-
-    const allTimes =
-
-    [...text.matchAll(
-
-        /\b\d{2}:\d{2}\b/g
-    )]
-
-    .map(m => m[0]);
-
-    // =====================================
-    // EXTRACT FLIGHT NUMBERS
-    // =====================================
-
-    const allFlightNumbers =
-
-    [...text.matchAll(
-
-        /\b([A-Z]{2}\s?\d{3,4})\b/g
-    )]
-
-    .map(m => cleanValue(m[1]));
-
-    const uniqueFlightNumbers =
-    [...new Set(allFlightNumbers)];
-
-    // =====================================
-    // EXTRACT AIRPORT CODES
-    // =====================================
-
-    const airportMatches =
-
-    [...text.matchAll(/\b[A-Z]{3}\b/g)]
-
-    .map(m => m[0])
-
-    .filter(code => {
-
-        return ![
-
-            "ADT",
-            "CNN",
-            "INF",
-            "BAG",
-            "CAB",
-            "VAT",
-
-            "JAN",
-            "FEB",
-            "MAR",
-            "APR",
-            "MAY",
-            "JUN",
-            "JUL",
-            "AUG",
-            "SEP",
-            "OCT",
-            "NOV",
-            "DEC"
-
-        ].includes(code);
-    });
+    const legs = [];
 
     // =====================================
     // BUILD LEGS
     // =====================================
 
-    const legs = [];
+    segments.forEach((seg, index) => {
 
-    for (
-        let i = 0;
-        i < airportMatches.length - 1;
-        i += 2
-    ) {
+        // =====================================
+        // AIRPORTS
+        // =====================================
+
+        const airportCodes =
+
+        [...seg.matchAll(/\b[A-Z]{3}\b/g)]
+
+        .map(m => m[0])
+
+        .filter(code => {
+
+            return ![
+
+                "ADT",
+                "CNN",
+                "INF",
+                "BAG",
+                "CAB",
+                "VAT",
+
+                "JAN",
+                "FEB",
+                "MAR",
+                "APR",
+                "MAY",
+                "JUN",
+                "JUL",
+                "AUG",
+                "SEP",
+                "OCT",
+                "NOV",
+                "DEC"
+
+            ].includes(code);
+        });
+
+        if (airportCodes.length < 2)
+            return;
+
+        // =====================================
+        // FIRST TWO AIRPORTS
+        // =====================================
 
         const from =
-        airportMatches[i];
+        airportCodes[0];
 
         const to =
-        airportMatches[i + 1];
-
-        // =====================================
-        // SAFETY
-        // =====================================
+        airportCodes[1];
 
         if (!from || !to)
-            continue;
+            return;
 
         if (from === to)
-            continue;
+            return;
 
         // =====================================
-        // AVOID DUPLICATES
+        // DATE ABOVE SEGMENT
         // =====================================
 
-        const exists =
-        legs.find(l =>
-            l.from === from &&
-            l.to === to
-        );
+        const beforeSegment =
+        splitSegments[index];
 
-        if (exists)
-            continue;
+        const dateMatches =
+
+        [...beforeSegment.matchAll(
+
+            /\b\d{1,2}\s+(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+\d{4}\b/gi
+        )];
+
+        const departureDate =
+        dateMatches.length
+        ? cleanValue(
+            dateMatches[
+                dateMatches.length - 1
+            ][0]
+        )
+        : null;
+
+        // =====================================
+        // TIME
+        // =====================================
+
+        const departureTime =
+
+        seg.match(
+            /\b\d{2}:\d{2}\b/
+        )?.[0]
+
+        ||
+
+        null;
+
+        // =====================================
+        // FLIGHT NUMBER
+        // =====================================
+
+        const flightNumber =
+
+        seg.match(
+            /\b([A-Z]{2}\s?\d{3,4})\b/
+        )?.[1]
+
+        ||
+
+        null;
 
         // =====================================
         // SAVE LEG
@@ -265,25 +275,25 @@ function parseTicket(text) {
             to,
 
             departure_date:
-            uniqueDates[legs.length] || null,
+            departureDate,
 
             departure_time:
-            allTimes[legs.length] || null,
+            departureTime,
 
             flight_number:
-            uniqueFlightNumbers[legs.length] || null
+            cleanValue(flightNumber)
         });
-    }
+    });
 
     // =====================================
-    // DEBUG
+    // DEBUG LEGS
     // =====================================
 
     console.log("========== LEGS ==========");
     console.log(legs);
 
     // =====================================
-    // OUTBOUND
+    // OUTBOUND LEG
     // =====================================
 
     const outboundLeg =
@@ -306,66 +316,56 @@ function parseTicket(text) {
     }
 
     // =====================================
-    // DETECT ROUND TRIP
+    // ROUND TRIP DETECTION
     // =====================================
 
     let isRoundTrip = false;
 
     let returnLeg = null;
 
-    for (const leg of legs.slice(1)) {
+    // =====================================
+    // IF LEGS CONTINUE AFTER
+    // DESTINATION ARRIVAL
+    // =====================================
 
-        // =====================================
-        // IF FLIGHTS CONTINUE
-        // AFTER DESTINATION
-        // =====================================
+    if (legs.length > 1) {
 
-        if (
-            leg.from === arrivalAirport
-        ) {
+        for (let i = 1; i < legs.length; i++) {
 
-            isRoundTrip = true;
+            const leg = legs[i];
 
             // =====================================
-            // REVERSED ROUTE
+            // RETURN STARTS FROM
+            // OUTBOUND DESTINATION
             // =====================================
 
             if (
-                leg.to === departureAirport
+                leg.from === arrivalAirport
             ) {
 
-                returnLeg = leg;
+                isRoundTrip = true;
+
+                returnLeg = {
+
+                    from:
+                    arrivalAirport,
+
+                    to:
+                    departureAirport,
+
+                    departure_date:
+                    leg.departure_date,
+
+                    departure_time:
+                    leg.departure_time,
+
+                    flight_number:
+                    leg.flight_number
+                };
+
                 break;
             }
         }
-    }
-
-    // =====================================
-    // FALLBACK RETURN LEG
-    // =====================================
-
-    if (
-        !returnLeg &&
-        isRoundTrip
-    ) {
-
-        returnLeg = {
-
-            from:
-            arrivalAirport,
-
-            to:
-            departureAirport,
-
-            departure_date:
-            uniqueDates[1] || null,
-
-            departure_time:
-            allTimes[1] || null,
-
-            flight_number:
-            uniqueFlightNumbers[1] || null
-        };
     }
 
     // =====================================
@@ -530,7 +530,7 @@ function parseTicket(text) {
         : "ONE_WAY",
 
         // =====================================
-        // RETURN FLIGHT
+        // RETURN
         // =====================================
 
         return_departure_airport:
