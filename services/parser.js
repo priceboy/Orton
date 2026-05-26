@@ -1,170 +1,171 @@
 function getCheckInTime(time) {
 
-    // =====================================
-    // SAFETY
-    // =====================================
+    if (!time) return null;
 
-    if (
-        !time ||
-        typeof time !== "string" ||
-        !time.includes(":")
-    ) {
-        return null;
-    }
-
-    const parts = time.split(":");
-
-    if (parts.length !== 2)
-        return null;
-
-    let h = parseInt(parts[0]);
-    let m = parseInt(parts[1]);
-
-    if (
-        isNaN(h) ||
-        isNaN(m)
-    ) {
-        return null;
-    }
-
-    // =====================================
-    // CHECK-IN = 4 HOURS BEFORE
-    // =====================================
+    let [h, m] = time.split(":").map(Number);
 
     h -= 4;
 
-    if (h < 0)
-        h += 24;
+    if (h < 0) h += 24;
 
-    return `${h
-        .toString()
-        .padStart(2, "0")}:${m
+    return `${h.toString().padStart(2, "0")}:${m
         .toString()
         .padStart(2, "0")}`;
 }
 
-// =====================================
-// CLEAN VALUE
-// =====================================
+function cleanText(text) {
 
-function cleanValue(value) {
+    return text
+        .replace(/\r/g, "\n")
+        .replace(/\t/g, " ")
+        .replace(/[ ]{2,}/g, " ")
+        .replace(/\n{2,}/g, "\n");
+}
 
-    if (!value)
-        return null;
+function extractName(text) {
 
-    return value
+    // MOST RELIABLE PATTERN
+    let match = text.match(
+        /(?:MR|MRS|MS|MISS)\s+([A-Z\/\s]+)/i
+    );
+
+    if (!match) {
+
+        match = text.match(
+            /PASSENGER(?: NAME)?[:\s]+([A-Z\/\s]+)/i
+        );
+    }
+
+    if (!match) {
+
+        match = text.match(
+            /»\s*([A-Z\s\/]+?)Check-In/i
+        );
+    }
+
+    if (!match) return null;
+
+    return match[1]
+        .replace(/[^A-Z\/\s]/gi, "")
         .replace(/\s+/g, " ")
-        .replace(/[|]/g, "")
         .trim();
 }
 
-// =====================================
-// MAIN PARSER
-// =====================================
+function extractHeaderDestination(text) {
 
-function parseTicket(text) {
+    const match = text.match(
+        /TRIP TO\s+([A-Z]+)/i
+    );
 
-    // =====================================
-    // CLEAN PDF TEXT
-    // =====================================
+    if (!match) return null;
 
-    text = text
-        .replace(/\r/g, "\n")
-        .replace(/\t/g, " ")
-        .replace(/[ ]{2,}/g, " ");
+    const city = match[1].toUpperCase();
 
-    // =====================================
-    // CUSTOMER NAME
-    // =====================================
+    const cityMap = {
 
-    let customerName = null;
+        DOUALA: "DLA",
+        PARIS: "CDG",
+        KIGALI: "KGL",
+        BANGUI: "BGF",
+        YAOUNDE: "NSI",
+        BRUSSELS: "BRU",
+        ISTANBUL: "IST"
+    };
 
-    const namePatterns = [
+    return cityMap[city] || null;
+}
 
-        /(?:MR|MRS|MS)\s+([A-Z\/\s]{5,})/i,
+function extractDates(text) {
 
-        /PASSENGER\s*:?[\s\n]+([A-Z\/\s]{5,})/i,
+    return [
+        ...text.matchAll(
+            /\b\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+\d{4}\b/gi
+        )
+    ].map(m => m[0]);
+}
 
-        /NAME\s*:?[\s\n]+([A-Z\/\s]{5,})/i,
+function extractBaggage(text, type) {
 
-        /»\s*([A-Z\/\s]+?)Check-In/i
-    ];
+    const regexes = {
 
-    for (const pattern of namePatterns) {
+        cabin: [
 
-        const match = text.match(pattern);
+            /Cabin Baggage:\s*Adult,\s*([^\n]+)/i,
+
+            /Cabin Baggage\s*:?[\s\n]*([^\n]+)/i,
+
+            /CABIN BAGGAGE\s*:?[\s\n]*([^\n]+)/i
+        ],
+
+        checked: [
+
+            /Checked Baggage:\s*Adult,\s*([^\n]+)/i,
+
+            /Checked Baggage\s*:?[\s\n]*([^\n]+)/i,
+
+            /CHECKED BAGGAGE\s*:?[\s\n]*([^\n]+)/i
+        ]
+    };
+
+    for (const reg of regexes[type]) {
+
+        const match = text.match(reg);
 
         if (match?.[1]) {
 
-            customerName =
-            cleanValue(match[1]);
-
-            customerName =
-            customerName
-                .replace(/[^A-Z\/\s]/gi, "")
+            return match[1]
+                .replace(/\s+/g, " ")
                 .trim();
-
-            break;
         }
     }
 
-    // =====================================
+    return null;
+}
+
+function parseTicket(text) {
+
+    text = cleanText(text);
+
+    // ======================================
+    // CUSTOMER NAME
+    // ======================================
+
+    const customer_name =
+        extractName(text);
+
+    // ======================================
     // HEADER DESTINATION
-    // =====================================
+    // ======================================
 
-    let outboundDestination = null;
+    const finalDestination =
+        extractHeaderDestination(text);
 
-    const cityToAirport = {
+    // ======================================
+    // GLOBAL DATES
+    // ======================================
 
-        DOUALA: "DLA",
-        KIGALI: "KGL",
-        PARIS: "CDG",
-        BANGUI: "BGF",
-        BRUSSELS: "BRU",
-        ISTANBUL: "IST",
-        NAIROBI: "NBO"
-    };
+    const globalDates =
+        extractDates(text);
 
-    const headerMatch =
-    text.match(/TRIP TO\s+([A-Z\s]+)/i);
+    // ======================================
+    // SEGMENTS
+    // ======================================
 
-    if (headerMatch?.[1]) {
-
-        const city =
-        headerMatch[1]
-            .trim()
-            .split(" ")[0]
-            .toUpperCase();
-
-        outboundDestination =
-        cityToAirport[city] || null;
-    }
-
-    // =====================================
-    // SPLIT SEGMENTS
-    // =====================================
-
-    const splitSegments =
-    text.split("DEPARTURE:");
-
-    const segments =
-    splitSegments.slice(1);
+    const rawSegments =
+        text.split(/DEPARTURE:/i).slice(1);
 
     const legs = [];
 
-    // =====================================
-    // BUILD LEGS
-    // =====================================
+    rawSegments.forEach((segment, index) => {
 
-    segments.forEach((seg, index) => {
-
-        // =====================================
+        // ======================================
         // AIRPORTS
-        // =====================================
+        // ======================================
 
-        const airportCodes =
+        const airportMatches = [
 
-        [...seg.matchAll(/\b[A-Z]{3}\b/g)]
+            ...segment.matchAll(/\b[A-Z]{3}\b/g)
+        ]
 
         .map(m => m[0])
 
@@ -195,363 +196,282 @@ function parseTicket(text) {
             ].includes(code);
         });
 
-        if (airportCodes.length < 2)
-            return;
+        const uniqueAirports =
+            [...new Set(airportMatches)];
 
-        // =====================================
-        // FIRST TWO AIRPORTS
-        // =====================================
+        if (uniqueAirports.length < 2)
+            return;
 
         const from =
-        airportCodes[0];
+            uniqueAirports[0];
 
         const to =
-        airportCodes[1];
+            uniqueAirports[1];
 
-        if (!from || !to)
-            return;
-
-        if (from === to)
-            return;
-
-        // =====================================
-        // DATE ABOVE SEGMENT
-        // =====================================
-
-        const beforeSegment =
-        splitSegments[index];
-
-        const dateMatches =
-
-        [...beforeSegment.matchAll(
-
-            /\b\d{1,2}\s+(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+\d{4}\b/gi
-        )];
-
-        const departureDate =
-        dateMatches.length
-        ? cleanValue(
-            dateMatches[
-                dateMatches.length - 1
-            ][0]
-        )
-        : null;
-
-        // =====================================
+        // ======================================
         // TIME
-        // =====================================
+        // ======================================
 
-        const departureTime =
+        let depTime =
 
-        seg.match(
-            /\b\d{2}:\d{2}\b/
-        )?.[0]
+            segment.match(
+                /Departing At:\s*([0-9]{2}:[0-9]{2})/i
+            )?.[1]
+
+            ||
+
+            segment.match(
+                /\b([0-9]{2}:[0-9]{2})\b/
+            )?.[1]
+
+            ||
+
+            null;
+
+        // ======================================
+        // FLIGHT NUMBER
+        // ======================================
+
+        const flightNo =
+
+            segment.match(
+                /\b([A-Z]{2}\s?\d{3,4})\b/
+            )?.[1]
+
+            ||
+
+            null;
+
+        // ======================================
+        // DATE
+        // IMPORTANT:
+        // RETURN DATE IS ABOVE SEGMENT
+        // ======================================
+
+        let depDate = null;
+
+        // GET TEXT BEFORE THIS SEGMENT
+        const fullIndex =
+            text.indexOf(segment);
+
+        const beforeText =
+            text.substring(
+                Math.max(0, fullIndex - 400),
+                fullIndex
+            );
+
+        const beforeDates = [
+
+            ...beforeText.matchAll(
+                /\b\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+\d{4}\b/gi
+            )
+
+        ].map(m => m[0]);
+
+        if (beforeDates.length > 0) {
+
+            depDate =
+            beforeDates[beforeDates.length - 1];
+        }
+
+        // FALLBACK
+        if (!depDate) {
+
+            depDate =
+            globalDates[index] || null;
+        }
+
+        legs.push({
+
+            from,
+            to,
+            depDate,
+            depTime,
+            flightNo
+        });
+    });
+
+    console.log("ALL LEGS:", legs);
+
+    // ======================================
+    // OUTBOUND
+    // ======================================
+
+    const outboundLeg =
+        legs[0] || {};
+
+    const departure_airport =
+        outboundLeg.from || null;
+
+    let arrival_airport =
+        outboundLeg.to || null;
+
+    // HEADER OVERRIDE
+    if (finalDestination) {
+
+        arrival_airport =
+        finalDestination;
+    }
+
+    // ======================================
+    // DETECT ROUND TRIP
+    // ======================================
+
+    let isRoundTrip = false;
+
+    // IF MORE LEGS EXIST AFTER ARRIVAL
+    // THEN IT IS ROUND TRIP
+
+    const extraLegExists =
+
+        legs.some((leg, idx) => {
+
+            if (idx === 0) return false;
+
+            return leg.from === arrival_airport;
+        });
+
+    if (extraLegExists) {
+
+        isRoundTrip = true;
+    }
+
+    // ======================================
+    // RETURN TRIP
+    // ======================================
+
+    let return_departure_airport = null;
+    let return_arrival_airport = null;
+
+    let return_departure_date = null;
+    let return_departure_time = null;
+    let return_flight_number = null;
+
+    if (isRoundTrip) {
+
+        // REVERSE ROUTE
+
+        return_departure_airport =
+            arrival_airport;
+
+        return_arrival_airport =
+            departure_airport;
+
+        // FIND LEG STARTING FROM RETURN DEP AIRPORT
+
+        const returnLeg = legs.find(
+            (leg, idx) => {
+
+                if (idx === 0) return false;
+
+                return (
+                    leg.from ===
+                    return_departure_airport
+                );
+            }
+        );
+
+        console.log("RETURN LEG:", returnLeg);
+
+        if (returnLeg) {
+
+            return_departure_date =
+                returnLeg.depDate;
+
+            return_departure_time =
+                returnLeg.depTime;
+
+            return_flight_number =
+                returnLeg.flightNo;
+        }
+    }
+
+    // ======================================
+    // AIRLINE
+    // ======================================
+
+    const airline_name =
+
+        text.match(
+            /\b(ETHIOPIAN AIRLINES|RWANDAIR|AIR FRANCE|KENYA AIRWAYS|TURKISH AIRLINES)\b/i
+        )?.[1]
 
         ||
 
-        null;
-
-        // =====================================
-        // FLIGHT NUMBER
-        // =====================================
-
-        const flightNumber =
-
-        seg.match(
-            /\b([A-Z]{2}\s?\d{3,4})\b/
+        text.match(
+            /\n([A-Z ]+LIMITED)/i
         )?.[1]
 
         ||
 
         null;
 
-        // =====================================
-        // SAVE LEG
-        // =====================================
+    // ======================================
+    // BAGGAGE
+    // ======================================
 
-        legs.push({
+    const cabin_luggage =
+        extractBaggage(text, "cabin");
 
-            from,
-            to,
+    const checked_luggage =
+        extractBaggage(text, "checked");
 
-            departure_date:
-            departureDate,
-
-            departure_time:
-            departureTime,
-
-            flight_number:
-            cleanValue(flightNumber)
-        });
-    });
-
-    // =====================================
-    // DEBUG LEGS
-    // =====================================
-
-    console.log("========== LEGS ==========");
-    console.log(legs);
-
-    // =====================================
-    // OUTBOUND LEG
-    // =====================================
-
-    const outboundLeg =
-    legs[0] || {};
-
-    const departureAirport =
-    outboundLeg.from || null;
-
-    let arrivalAirport =
-    outboundLeg.to || null;
-
-    // =====================================
-    // HEADER DESTINATION OVERRIDE
-    // =====================================
-
-    if (outboundDestination) {
-
-        arrivalAirport =
-        outboundDestination;
-    }
-
-    // =====================================
-    // ROUND TRIP DETECTION
-    // =====================================
-
-    let isRoundTrip = false;
-
-    let returnLeg = null;
-
-    // =====================================
-    // IF LEGS CONTINUE AFTER
-    // DESTINATION ARRIVAL
-    // =====================================
-
-    if (legs.length > 1) {
-
-        for (let i = 1; i < legs.length; i++) {
-
-            const leg = legs[i];
-
-            // =====================================
-            // RETURN STARTS FROM
-            // OUTBOUND DESTINATION
-            // =====================================
-
-            if (
-                leg.from === arrivalAirport
-            ) {
-
-                isRoundTrip = true;
-
-                returnLeg = {
-
-                    from:
-                    arrivalAirport,
-
-                    to:
-                    departureAirport,
-
-                    departure_date:
-                    leg.departure_date,
-
-                    departure_time:
-                    leg.departure_time,
-
-                    flight_number:
-                    leg.flight_number
-                };
-
-                break;
-            }
-        }
-    }
-
-    // =====================================
-    // AIRLINE
-    // =====================================
-
-    const airline =
-
-    text.match(
-        /\b(RWANDAIR|AIR FRANCE|KENYA AIRWAYS|ETHIOPIAN AIRLINES)\b/i
-    )?.[1]
-
-    ||
-
-    text.match(
-        /\n([A-Z ]+LIMITED)/i
-    )?.[1]
-
-    ||
-
-    null;
-
-    // =====================================
-    // CABIN LUGGAGE
-    // =====================================
-
-    let cabinLuggage = null;
-
-    const cabinPatterns = [
-
-        /Cabin\s*Baggage[\s\S]{0,100}?(\d+\s?(?:KG|PC))/i,
-
-        /CABIN[\s\S]{0,100}?(\d+\s?(?:KG|PC))/i,
-
-        /Hand\s*Baggage[\s\S]{0,100}?(\d+\s?(?:KG|PC))/i
-    ];
-
-    for (const pattern of cabinPatterns) {
-
-        const match =
-        text.match(pattern);
-
-        if (match?.[1]) {
-
-            cabinLuggage =
-            cleanValue(match[1]);
-
-            break;
-        }
-    }
-
-    // =====================================
-    // CHECKED LUGGAGE
-    // =====================================
-
-    let checkedLuggage = null;
-
-    const checkedPatterns = [
-
-        /Checked\s*Baggage[\s\S]{0,100}?(\d+\s?(?:KG|PC))/i,
-
-        /CHECKED[\s\S]{0,100}?(\d+\s?(?:KG|PC))/i,
-
-        /Baggage\s*Allowance[\s\S]{0,100}?(\d+\s?(?:KG|PC))/i
-    ];
-
-    for (const pattern of checkedPatterns) {
-
-        const match =
-        text.match(pattern);
-
-        if (match?.[1]) {
-
-            checkedLuggage =
-            cleanValue(match[1]);
-
-            break;
-        }
-    }
-
-    // =====================================
-    // FINAL DEBUG
-    // =====================================
-
-    console.log("========== FINAL ==========");
-
-    console.log({
-
-        customerName,
-
-        departureAirport,
-        arrivalAirport,
-
-        outboundDate:
-        outboundLeg.departure_date,
-
-        returnDate:
-        returnLeg?.departure_date,
-
-        cabinLuggage,
-        checkedLuggage,
-
-        tripType:
-        isRoundTrip
-        ? "ROUND_TRIP"
-        : "ONE_WAY"
-    });
-
-    // =====================================
+    // ======================================
     // FINAL OUTPUT
-    // =====================================
+    // ======================================
 
     return {
 
-        customer_name:
-        customerName,
+        customer_name,
 
-        // =====================================
-        // OUTBOUND
-        // =====================================
+        departure_airport,
 
-        departure_airport:
-        departureAirport,
-
-        arrival_airport:
-        arrivalAirport,
+        arrival_airport,
 
         departure_date:
-        outboundLeg.departure_date || null,
+            outboundLeg.depDate || null,
 
         departure_time:
-        outboundLeg.departure_time || null,
+            outboundLeg.depTime || null,
 
         checkin_time:
-        getCheckInTime(
-            outboundLeg.departure_time
-        ),
+            getCheckInTime(
+                outboundLeg.depTime
+            ),
 
-        airline_name:
-        cleanValue(airline),
+        airline_name,
 
         flight_number:
-        outboundLeg.flight_number || null,
+            outboundLeg.flightNo || null,
 
-        // =====================================
-        // BAGGAGE
-        // =====================================
+        cabin_luggage,
 
-        cabin_luggage:
-        cabinLuggage,
-
-        checked_luggage:
-        checkedLuggage,
-
-        // =====================================
-        // TRIP TYPE
-        // =====================================
+        checked_luggage,
 
         trip_type:
-        isRoundTrip
-        ? "ROUND_TRIP"
-        : "ONE_WAY",
 
-        // =====================================
+            isRoundTrip
+            ? "ROUND_TRIP"
+            : "ONE_WAY",
+
+        // ======================================
         // RETURN
-        // =====================================
+        // ======================================
 
-        return_departure_airport:
-        returnLeg?.from || null,
+        return_departure_airport,
 
-        return_arrival_airport:
-        returnLeg?.to || null,
+        return_arrival_airport,
 
-        return_departure_date:
-        returnLeg?.departure_date || null,
+        return_departure_date,
 
-        return_departure_time:
-        returnLeg?.departure_time || null,
+        return_departure_time,
 
         return_checkin_time:
-        getCheckInTime(
-            returnLeg?.departure_time
-        ),
+            getCheckInTime(
+                return_departure_time
+            ),
 
-        return_flight_number:
-        returnLeg?.flight_number || null
+        return_flight_number
     };
 }
 
