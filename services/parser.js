@@ -28,49 +28,77 @@ function cleanText(text) {
 
 function extractName(text) {
 
-    const patterns = [
-
-        // MR JOHN DOE
-        /\b(?:MR|MRS|MS|MISS)\s+([A-Z][A-Z\s\/]{3,})/i,
-
-        // PASSENGER NAME: JOHN DOE
-        /PASSENGER(?: NAME)?[:\s]+([A-Z][A-Z\s\/]{3,})/i,
-
-        // TRAVELER NAME
-        /TRAVELER(?: NAME)?[:\s]+([A-Z][A-Z\s\/]{3,})/i,
-
-        // SPECIAL FORMAT
-        /»\s*([A-Z][A-Z\s\/]{3,}?)\s*Check-In/i
-    ];
-
     const blacklist = [
+
         "SEATS",
         "SEAT",
         "CHECK",
         "CHECK IN",
         "BAGGAGE",
         "FLIGHT",
-        "BOARDING"
+        "BOARDING",
+        "GATE",
+        "TERMINAL",
+        "ECONOMY"
+    ];
+
+    // ======================================
+    // STRONG PATTERNS
+    // ======================================
+
+    const patterns = [
+
+        // MR JOHN DOE
+        /\b(?:MR|MRS|MS|MISS)\.?\s+([A-Z\/ ]{5,40})/i,
+
+        // PASSENGER NAME
+        /PASSENGER(?: NAME)?[:\s]+([A-Z\/ ]{5,40})/i,
+
+        // TRAVELER NAME
+        /TRAVELER(?: NAME)?[:\s]+([A-Z\/ ]{5,40})/i,
+
+        // NAME BEFORE CHECK-IN
+        /([A-Z\/ ]{5,40})\s+Check-In/i
     ];
 
     for (const pattern of patterns) {
 
         const match = text.match(pattern);
 
-        if (match?.[1]) {
+        if (!match?.[1]) continue;
 
-            const cleaned = match[1]
-                .replace(/[^A-Z\/\s]/gi, "")
-                .replace(/\s+/g, " ")
-                .trim();
+        let cleaned = match[1]
 
-            if (
-                cleaned &&
-                !blacklist.includes(cleaned.toUpperCase())
-            ) {
-                return cleaned;
-            }
+            .replace(/[^A-Z\/ ]/gi, "")
+            .replace(/\s+/g, " ")
+            .trim();
+
+        // REMOVE TITLE LEFTOVERS
+
+        cleaned = cleaned
+            .replace(/^(MR|MRS|MS|MISS)\s+/i, "")
+            .trim();
+
+        const upper =
+            cleaned.toUpperCase();
+
+        // BLACKLIST CHECK
+
+        if (
+            blacklist.some(word =>
+                upper.includes(word)
+            )
+        ) {
+            continue;
         }
+
+        // MUST CONTAIN SPACE
+        // avoids single junk words
+
+        if (!cleaned.includes(" "))
+            continue;
+
+        return cleaned;
     }
 
     return null;
