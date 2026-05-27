@@ -43,9 +43,7 @@ function extractName(text) {
     ];
 
     // ======================================
-    // FIRST TRY:
     // ORIGINAL WORKING FORMAT
-    // » JOHN DOE Check-In
     // ======================================
 
     const oldWorkingMatch =
@@ -68,7 +66,10 @@ function extractName(text) {
                 upper.includes(word)
             );
 
-        if (!bad && cleaned.split(" ").length >= 2) {
+        if (
+            !bad &&
+            cleaned.split(" ").length >= 2
+        ) {
 
             return cleaned;
         }
@@ -80,16 +81,12 @@ function extractName(text) {
 
     const patterns = [
 
-        // MR JOHN DOE
         /\b(?:MR|MRS|MS|MISS)\.?\s+([A-Z\/ ]{5,60})/i,
 
-        // PASSENGER NAME
         /PASSENGER(?: NAME)?[:\s]+([A-Z\/ ]{5,60})/i,
 
-        // TRAVELER NAME
         /TRAVELER(?: NAME)?[:\s]+([A-Z\/ ]{5,60})/i,
 
-        // NAME BEFORE CHECK-IN
         /([A-Z][A-Z\s\/]{5,60})\s+Check-In/i
     ];
 
@@ -224,7 +221,7 @@ function extractBaggage(text, type) {
 
 function extractDateInsideSegment(segment) {
 
-    // DATE DIRECTLY BELOW DEPARTURE
+    // DATE BELOW DEPARTURE
 
     const departureMatch = segment.match(
 
@@ -427,30 +424,35 @@ function parseTicket(text) {
     }
 
     // ======================================
-    // ROUND TRIP
+    // ROUND TRIP DETECTION
     // ======================================
 
-    let isRoundTrip = false;
+    let returnLeg = null;
 
-    const returnStarter = legs.find(
-        (leg, idx) => {
+    if (
+        arrival_airport &&
+        departure_airport
+    ) {
 
-            if (idx === 0)
+        returnLeg = legs.find((leg, index) => {
+
+            if (index === 0)
                 return false;
 
             return (
-                leg.from === arrival_airport
+
+                leg.from === arrival_airport &&
+
+                leg.to === departure_airport
             );
-        }
-    );
-
-    if (returnStarter) {
-
-        isRoundTrip = true;
+        });
     }
 
+    const isRoundTrip =
+        !!returnLeg;
+
     // ======================================
-    // RETURN
+    // RETURN VALUES
     // ======================================
 
     let return_departure_airport = null;
@@ -460,43 +462,22 @@ function parseTicket(text) {
     let return_departure_time = null;
     let return_flight_number = null;
 
-    if (isRoundTrip) {
+    if (returnLeg) {
 
         return_departure_airport =
-            arrival_airport;
+            returnLeg.from;
 
         return_arrival_airport =
-            departure_airport;
+            returnLeg.to;
 
-        const returnLeg = legs.find(
-            (leg, idx) => {
+        return_departure_date =
+            returnLeg.depDate;
 
-                if (idx === 0)
-                    return false;
+        return_departure_time =
+            returnLeg.depTime;
 
-                return (
-                    leg.from ===
-                    return_departure_airport
-                );
-            }
-        );
-
-        console.log(
-            "RETURN LEG:",
-            returnLeg
-        );
-
-        if (returnLeg) {
-
-            return_departure_date =
-                returnLeg.depDate;
-
-            return_departure_time =
-                returnLeg.depTime;
-
-            return_flight_number =
-                returnLeg.flightNo;
-        }
+        return_flight_number =
+            returnLeg.flightNo;
     }
 
     // ======================================
