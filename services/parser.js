@@ -221,8 +221,6 @@ function extractBaggage(text, type) {
 
 function extractDateInsideSegment(segment) {
 
-    // DATE BELOW DEPARTURE
-
     const departureMatch = segment.match(
 
         /DEPARTURE:?\s*(?:\r?\n|\s)*(\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+\d{4})/i
@@ -233,8 +231,6 @@ function extractDateInsideSegment(segment) {
         return departureMatch[1]
             .trim();
     }
-
-    // FALLBACK
 
     const anyDate = segment.match(
 
@@ -440,10 +436,7 @@ function parseTicket(text) {
                 return false;
 
             return (
-
-                leg.from === arrival_airport &&
-
-                leg.to === departure_airport
+                leg.from === arrival_airport
             );
         });
     }
@@ -470,14 +463,98 @@ function parseTicket(text) {
         return_arrival_airport =
             returnLeg.to;
 
-        return_departure_date =
-            returnLeg.depDate;
-
         return_departure_time =
             returnLeg.depTime;
 
         return_flight_number =
             returnLeg.flightNo;
+
+        // ======================================
+        // FIND RAW RETURN SEGMENT
+        // ======================================
+
+        const matchingRawSegment =
+            rawSegments.find(seg => {
+
+                const fullSegment =
+                    "DEPARTURE:" + seg;
+
+                const airports = [
+
+                    ...fullSegment.matchAll(
+                        /\b[A-Z]{3}\b/g
+                    )
+
+                ]
+                .map(m => m[0])
+                .filter(code => ![
+
+                    "ADT",
+                    "CNN",
+                    "INF",
+                    "BAG",
+                    "CAB",
+                    "VAT",
+
+                    "JAN",
+                    "FEB",
+                    "MAR",
+                    "APR",
+                    "MAY",
+                    "JUN",
+                    "JUL",
+                    "AUG",
+                    "SEP",
+                    "OCT",
+                    "NOV",
+                    "DEC"
+
+                ].includes(code));
+
+                const unique =
+                    [...new Set(airports)];
+
+                return (
+                    unique[0] ===
+                    return_departure_airport
+                );
+            });
+
+        if (matchingRawSegment) {
+
+            const fullSegment =
+                "DEPARTURE:" +
+                matchingRawSegment;
+
+            // ======================================
+            // HEADER DATE
+            // ======================================
+
+            const headerDateMatch =
+                fullSegment.match(
+
+                    /DEPARTURE:\s*(?:MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY|SATURDAY|SUNDAY)?\s*(\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC))/i
+                );
+
+            if (headerDateMatch?.[1]) {
+
+                return_departure_date =
+                    headerDateMatch[1]
+                    .trim();
+            }
+
+            else {
+
+                return_departure_date =
+                    returnLeg.depDate;
+            }
+        }
+
+        else {
+
+            return_departure_date =
+                returnLeg.depDate;
+        }
     }
 
     // ======================================
