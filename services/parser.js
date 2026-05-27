@@ -42,23 +42,22 @@ function extractName(text) {
         "ECONOMY"
     ];
 
-    // ======================================
-    // STRONG PATTERNS
-    // ======================================
-
     const patterns = [
 
         // MR JOHN DOE
-        /\b(?:MR|MRS|MS|MISS)\.?\s+([A-Z\/ ]{5,40})/i,
+        /\b(?:MR|MRS|MS|MISS)\.?\s+([A-Z\/ ]{5,60})/i,
 
         // PASSENGER NAME
-        /PASSENGER(?: NAME)?[:\s]+([A-Z\/ ]{5,40})/i,
+        /PASSENGER(?: NAME)?[:\s]+([A-Z\/ ]{5,60})/i,
 
         // TRAVELER NAME
-        /TRAVELER(?: NAME)?[:\s]+([A-Z\/ ]{5,40})/i,
+        /TRAVELER(?: NAME)?[:\s]+([A-Z\/ ]{5,60})/i,
+
+        // SPECIAL HEADER FORMAT
+        /»\s*([A-Z\s\/]+?)\s*Check-In/i,
 
         // NAME BEFORE CHECK-IN
-        /([A-Z\/ ]{5,40})\s+Check-In/i
+        /([A-Z][A-Z\s\/]{5,60})\s+Check-In/i
     ];
 
     for (const pattern of patterns) {
@@ -73,8 +72,6 @@ function extractName(text) {
             .replace(/\s+/g, " ")
             .trim();
 
-        // REMOVE TITLE LEFTOVERS
-
         cleaned = cleaned
             .replace(/^(MR|MRS|MS|MISS)\s+/i, "")
             .trim();
@@ -82,20 +79,17 @@ function extractName(text) {
         const upper =
             cleaned.toUpperCase();
 
-        // BLACKLIST CHECK
-
-        if (
+        const bad =
             blacklist.some(word =>
                 upper.includes(word)
-            )
-        ) {
-            continue;
-        }
+            );
 
-        // MUST CONTAIN SPACE
-        // avoids single junk words
+        if (bad) continue;
 
-        if (!cleaned.includes(" "))
+        const words =
+            cleaned.split(" ");
+
+        if (words.length < 2)
             continue;
 
         return cleaned;
@@ -192,23 +186,28 @@ function extractBaggage(text, type) {
 }
 
 // ======================================
-// DATE BELOW DEPARTURE
+// EXTRACT DATE FROM SEGMENT
 // ======================================
 
 function extractDateInsideSegment(segment) {
 
-    const match = segment.match(
-        /DEPARTURE:?\s*\n?\s*(\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+\d{4})/i
+    // DATE BELOW DEPARTURE
+
+    const departureMatch = segment.match(
+
+        /DEPARTURE:?\s*(?:\r?\n|\s)*(\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+\d{4})/i
     );
 
-    if (match?.[1]) {
+    if (departureMatch?.[1]) {
 
-        return match[1].trim();
+        return departureMatch[1]
+            .trim();
     }
 
-    // fallback
+    // FALLBACK
 
     const anyDate = segment.match(
+
         /\b\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+\d{4}\b/i
     );
 
@@ -349,14 +348,14 @@ function parseTicket(text) {
 
         let depDate = null;
 
-        // FIRST LEG = FIRST DATE
         if (index === 0) {
 
             depDate =
-                globalDates[0] || null;
+                extractDateInsideSegment(segment)
+                || globalDates[0]
+                || null;
         }
 
-        // RETURN LEG DATE
         else {
 
             depDate =
@@ -388,8 +387,6 @@ function parseTicket(text) {
     let arrival_airport =
         outboundLeg.to || null;
 
-    // HEADER OVERRIDE
-
     if (finalDestination) {
 
         arrival_airport =
@@ -397,7 +394,7 @@ function parseTicket(text) {
     }
 
     // ======================================
-    // ROUND TRIP DETECTION
+    // ROUND TRIP
     // ======================================
 
     let isRoundTrip = false;
@@ -431,8 +428,6 @@ function parseTicket(text) {
     let return_flight_number = null;
 
     if (isRoundTrip) {
-
-        // REVERSE ROUTE
 
         return_departure_airport =
             arrival_airport;
