@@ -1,7 +1,24 @@
-
 const sqlite3 = require("sqlite3").verbose();
 
-const db = new sqlite3.Database("./db/tickets.db");
+// ======================================
+// CREATE / CONNECT DATABASE
+// ======================================
+
+const db = new sqlite3.Database("./tickets.db", (err) => {
+
+    if (err) {
+
+        console.error(err.message);
+
+    } else {
+
+        console.log("Connected to tickets database");
+    }
+});
+
+// ======================================
+// CREATE TABLE
+// ======================================
 
 db.serialize(() => {
 
@@ -51,8 +68,17 @@ db.serialize(() => {
 
         )
 
-    `);
+    `, (err) => {
 
+        if (err) {
+
+            console.log("Table creation error:", err);
+
+        } else {
+
+            console.log("tickets table ready");
+        }
+    });
 });
 
 module.exports = db;
