@@ -1,72 +1,32 @@
-const sqlite3 = require("sqlite3").verbose();
+const express = require("express");
+const cors = require("cors");
+const bodyParser = require("body-parser");
 
-// ======================================
-// CREATE / CONNECT DATABASE
-// ======================================
+const uploadRoute = require("./routes/upload");
+const searchRoute = require("./routes/search");
 
-const db = new sqlite3.Database("./tickets.db", (err) => {
+const app = express();
 
-    if (err) {
+app.use(cors());
+app.use(bodyParser.json());
+app.use(express.static("public"));
 
-        console.error(err.message);
+app.use("/upload", uploadRoute);
+app.use("/search", searchRoute);
 
-    } else {
 
-        console.log("Connected to tickets database");
-    }
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
-
-// ======================================
-// CREATE TABLE
-// ======================================
-
-db.serialize(() => {
-
-    db.run(`
-        CREATE TABLE IF NOT EXISTS tickets (
-
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-            customer_name TEXT,
-
-            departure_airport TEXT,
-            arrival_airport TEXT,
-
-            departure_date TEXT,
-            departure_time TEXT,
-
-            checkin_time TEXT,
-
-            airline_name TEXT,
-
-            flight_number TEXT,
-
-            cabin_luggage TEXT,
-            checked_luggage TEXT,
-
-            trip_type TEXT,
-
-            return_departure_airport TEXT,
-            return_arrival_airport TEXT,
-
-            return_departure_date TEXT,
-            return_departure_time TEXT,
-
-            return_checkin_time TEXT,
-
-            return_flight_number TEXT
-        )
-    `, (err) => {
-
-        if (err) {
-
-            console.log("Table creation error:", err);
-
-        } else {
-
-            console.log("tickets table ready");
-        }
+app.get("/all", (req, res) => {
+    const db = require("./db/database");
+    db.all("SELECT * FROM tickets", (err, rows) => {
+        if (err) return res.send(err);
+        res.json(rows);
     });
-});
+});const path = require("path");
 
-module.exports = db;
+// serve frontend files
+app.use(express.static(path.join(__dirname, "public")));
