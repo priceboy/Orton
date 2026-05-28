@@ -12,7 +12,6 @@ const upload = multer({
     dest: "uploads/"
 });
 
-
 // ==========================================
 // ✅ UPLOAD ROUTE
 // ==========================================
@@ -194,16 +193,13 @@ router.post(
                 this.lastID
             );
 
+            // ✅ CLEAN TEMP FILE
+            fs.unlinkSync(req.file.path);
+
             res.send(
                 "Uploaded successfully"
             );
         });
-
-        // =========================
-        // ✅ CLEAN TEMP FILE
-        // =========================
-
-        fs.unlinkSync(req.file.path);
 
     } catch (err) {
 
@@ -218,4 +214,4 @@ router.post(
     }
 });
 
-module.exports = router; 
+module.exports = router;
