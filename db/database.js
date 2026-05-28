@@ -1,38 +1,11 @@
 const sqlite3 = require("sqlite3").verbose();
 
-// ======================================
-// ✅ CONNECT DATABASE
-// ======================================
-
-const db = new sqlite3.Database(
-    "./db/tickets.db",
-    (err) => {
-
-        if (err) {
-
-            console.error(
-                "❌ DATABASE CONNECTION ERROR:",
-                err.message
-            );
-
-        } else {
-
-            console.log(
-                "✅ Connected to tickets database"
-            );
-        }
-    }
-);
-
-// ======================================
-// ✅ CREATE TABLE
-// ======================================
+const db = new sqlite3.Database("./tickets.db");
 
 db.serialize(() => {
 
-    db.run(
+    db.run(`
 
-        `
         CREATE TABLE IF NOT EXISTS tickets (
 
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -76,25 +49,9 @@ db.serialize(() => {
             return_flight_number TEXT
 
         )
-        `,
 
-        (err) => {
+    `);
 
-            if (err) {
-
-                console.error(
-                    "❌ TABLE CREATION ERROR:",
-                    err.message
-                );
-
-            } else {
-
-                console.log(
-                    "✅ tickets table ready"
-                );
-            }
-        }
-    );
 });
 
 module.exports = db;
