@@ -1,18 +1,14 @@
 const sqlite3 = require("sqlite3").verbose();
 
-// ======================================
-// CREATE / CONNECT DATABASE
-// ======================================
-
 const db = new sqlite3.Database("./tickets.db", (err) => {
 
     if (err) {
 
-        console.error(err.message);
+        console.error("Database error:", err.message);
 
     } else {
 
-        console.log("Connected to tickets database");
+        console.log("Connected to SQLite database");
     }
 });
 
@@ -23,23 +19,16 @@ const db = new sqlite3.Database("./tickets.db", (err) => {
 db.serialize(() => {
 
     db.run(`
-
         CREATE TABLE IF NOT EXISTS tickets (
 
             id INTEGER PRIMARY KEY AUTOINCREMENT,
 
             customer_name TEXT,
 
-            phone TEXT,
-
-            reference TEXT,
-
             departure_airport TEXT,
-
             arrival_airport TEXT,
 
             departure_date TEXT,
-
             departure_time TEXT,
 
             checkin_time TEXT,
@@ -49,30 +38,25 @@ db.serialize(() => {
             flight_number TEXT,
 
             cabin_luggage TEXT,
-
             checked_luggage TEXT,
 
             trip_type TEXT,
 
             return_departure_airport TEXT,
-
             return_arrival_airport TEXT,
 
             return_departure_date TEXT,
-
             return_departure_time TEXT,
 
             return_checkin_time TEXT,
 
             return_flight_number TEXT
-
         )
-
     `, (err) => {
 
         if (err) {
 
-            console.log("Table creation error:", err);
+            console.log("Table creation failed:", err);
 
         } else {
 
