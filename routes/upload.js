@@ -8,41 +8,12 @@ const db = require("../db/database");
 
 const router = express.Router();
 
-// ==========================================
-// MULTER
-// ==========================================
-
 const upload = multer({
-
-    dest: "uploads/",
-
-    limits: {
-
-        fileSize: 10 * 1024 * 1024 // 10MB
-    }
+    dest: "uploads/"
 });
 
 // ==========================================
-// SAFE FILE DELETE
-// ==========================================
-
-function safeDelete(path) {
-
-    try {
-
-        if (path && fs.existsSync(path)) {
-
-            fs.unlinkSync(path);
-        }
-
-    } catch (err) {
-
-        console.log("Delete warning:", err.message);
-    }
-}
-
-// ==========================================
-// UPLOAD ROUTE
+// ✅ UPLOAD ROUTE
 // ==========================================
 
 router.post(
@@ -52,28 +23,22 @@ router.post(
 
     try {
 
-        console.log("=================================");
-        console.log("UPLOAD ROUTE HIT");
-        console.log("=================================");
+        console.log("UPLOAD HIT");
 
-        // ======================================
-        // VALIDATE FILE
-        // ======================================
+        // =========================
+        // ✅ VALIDATE FILE
+        // =========================
 
         if (!req.file) {
 
-            return res.status(400).json({
-
-                success: false,
-                error: "No file uploaded"
-            });
+            return res
+            .status(400)
+            .send("No file uploaded");
         }
 
-        console.log("FILE:", req.file.originalname);
-
-        // ======================================
-        // READ PDF
-        // ======================================
+        // =========================
+        // ✅ READ PDF
+        // =========================
 
         const dataBuffer =
             fs.readFileSync(req.file.path);
@@ -81,210 +46,171 @@ router.post(
         const pdfData =
             await pdfParse(dataBuffer);
 
-        if (!pdfData?.text) {
+        console.log(
+            "PDF TEXT FULL:\n",
+            pdfData.text
+        );
 
-            safeDelete(req.file.path);
-
-            return res.status(400).json({
-
-                success: false,
-                error: "Could not read PDF"
-            });
-        }
-
-        console.log("PDF PARSED");
-
-        // ======================================
-        // PARSE TICKET
-        // ======================================
+        // =========================
+        // ✅ PARSE TICKET
+        // =========================
 
         const parsed =
             parseTicket(pdfData.text);
 
-        console.log("PARSED RESULT:");
-        console.log(parsed);
+        console.log(
+            "PARSED DATA:",
+            parsed
+        );
 
-        // ======================================
-        // FORM DATA
-        // ======================================
+        // =========================
+        // ✅ FORM DATA
+        // =========================
 
-        const phone =
-            req.body.phone || null;
+        const {
+            phone,
+            reference
+        } = req.body;
 
-        const reference =
-            req.body.reference || null;
+        // =========================
+        // ✅ SAVE TO DATABASE
+        // =========================
 
-        // ======================================
-        // SQL
-        // ======================================
-
-        const sql = `
+        db.run(`
 
             INSERT INTO tickets (
 
                 customer_name,
-
                 phone,
-
                 reference,
 
                 departure_airport,
-
                 arrival_airport,
 
                 departure_date,
-
                 departure_time,
-
                 checkin_time,
 
                 airline_name,
-
                 flight_number,
 
                 cabin_luggage,
-
                 checked_luggage,
 
                 trip_type,
 
                 return_departure_airport,
-
                 return_arrival_airport,
-
                 return_departure_date,
-
                 return_departure_time,
-
                 return_checkin_time,
-
                 return_flight_number
 
             )
 
             VALUES (
 
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                ?, ?, ?,
+                ?, ?,
+                ?, ?, ?,
+                ?, ?,
+                ?, ?,
+                ?,
+                ?, ?, ?, ?, ?, ?
+
             )
-        `;
 
-        // ======================================
-        // VALUES
-        // ======================================
+        `, [
 
-        const values = [
-
-            parsed.customer_name || null,
+            parsed.customer_name,
 
             phone,
 
             reference,
 
-            parsed.departure_airport || null,
+            parsed.departure_airport,
 
-            parsed.arrival_airport || null,
+            parsed.arrival_airport,
 
-            parsed.departure_date || null,
+            parsed.departure_date,
 
-            parsed.departure_time || null,
+            parsed.departure_time,
 
-            parsed.checkin_time || null,
+            parsed.checkin_time,
 
-            parsed.airline_name || null,
+            parsed.airline_name,
 
-            parsed.flight_number || null,
+            parsed.flight_number,
 
-            parsed.cabin_luggage || null,
+            parsed.cabin_luggage,
 
-            parsed.checked_luggage || null,
+            parsed.checked_luggage,
 
-            parsed.trip_type || null,
+            parsed.trip_type,
 
-            parsed.return_departure_airport || null,
+            // =========================
+            // ✅ RETURN TRIP DATA
+            // =========================
 
-            parsed.return_arrival_airport || null,
+            parsed.return_departure_airport,
 
-            parsed.return_departure_date || null,
+            parsed.return_arrival_airport,
 
-            parsed.return_departure_time || null,
+            parsed.return_departure_date,
 
-            parsed.return_checkin_time || null,
+            parsed.return_departure_time,
 
-            parsed.return_flight_number || null
-        ];
+            parsed.return_checkin_time,
 
-        console.log("INSERTING INTO DB...");
+            parsed.return_flight_number
 
-        // ======================================
-        // INSERT
-        // ======================================
+        ],
 
-        db.run(sql, values, function(err) {
+        function(err) {
 
-            // ======================================
-            // INSERT ERROR
-            // ======================================
+            // =========================
+            // ❌ DB ERROR
+            // =========================
 
             if (err) {
 
-                console.log("=================================");
-                console.log("DB INSERT ERROR");
-                console.log(err);
-                console.log("=================================");
+                console.error(
+                    "❌ DB INSERT ERROR:",
+                    err
+                );
 
-                safeDelete(req.file.path);
-
-                return res.status(500).json({
-
-                    success: false,
-
-                    error: err.message
-                });
+                return res
+                .status(500)
+                .send("Database insert failed");
             }
 
-            console.log("=================================");
-            console.log("INSERT SUCCESS");
-            console.log("ID:", this.lastID);
-            console.log("=================================");
+            // =========================
+            // ✅ SUCCESS
+            // =========================
 
-            // ======================================
-            // DELETE TEMP FILE
-            // ======================================
+            console.log(
+                "✅ DATA INSERTED, ID:",
+                this.lastID
+            );
 
-            safeDelete(req.file.path);
+            // ✅ CLEAN TEMP FILE
+            fs.unlinkSync(req.file.path);
 
-            // ======================================
-            // SUCCESS
-            // ======================================
-
-            res.json({
-
-                success: true,
-
-                ticket_id: this.lastID,
-
-                parsed
-            });
+            res.send(
+                "Uploaded successfully"
+            );
         });
 
     } catch (err) {
 
-        console.log("=================================");
-        console.log("UPLOAD CRASH");
-        console.log(err);
-        console.log("=================================");
+        console.error(
+            "UPLOAD ERROR:",
+            err
+        );
 
-        if (req.file?.path) {
-
-            safeDelete(req.file.path);
-        }
-
-        return res.status(500).json({
-
-            success: false,
-
-            error: err.message
-        });
+        res
+        .status(500)
+        .send("Error processing file");
     }
 });
 
