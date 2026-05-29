@@ -1,72 +1,79 @@
-const sqlite3 = require("sqlite3").verbose();
+const express = require("express");
+const cors = require("cors");
+const bodyParser = require("body-parser");
+const path = require("path");
 
 // ======================================
-// CREATE / CONNECT DATABASE
+// DATABASE
 // ======================================
 
-const db = new sqlite3.Database("./tickets.db", (err) => {
-
-    if (err) {
-
-        console.error(err.message);
-
-    } else {
-
-        console.log("Connected to tickets database");
-    }
-});
+const db = require("./db/database");
 
 // ======================================
-// CREATE TABLE
+// ROUTES
 // ======================================
 
-db.serialize(() => {
+const uploadRoute = require("./routes/upload");
+const searchRoute = require("./routes/search");
 
-    db.run(`
-        CREATE TABLE IF NOT EXISTS tickets (
+// ======================================
+// APP
+// ======================================
 
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+const app = express();
 
-            customer_name TEXT,
+// ======================================
+// MIDDLEWARE
+// ======================================
 
-            departure_airport TEXT,
-            arrival_airport TEXT,
+app.use(cors());
 
-            departure_date TEXT,
-            departure_time TEXT,
+app.use(bodyParser.json());
 
-            checkin_time TEXT,
+app.use(express.static(path.join(__dirname, "public")));
 
-            airline_name TEXT,
+// ======================================
+// ROUTES
+// ======================================
 
-            flight_number TEXT,
+app.use("/upload", uploadRoute);
 
-            cabin_luggage TEXT,
-            checked_luggage TEXT,
+app.use("/search", searchRoute);
 
-            trip_type TEXT,
+// ======================================
+// GET ALL TICKETS
+// ======================================
 
-            return_departure_airport TEXT,
-            return_arrival_airport TEXT,
+app.get("/all", (req, res) => {
 
-            return_departure_date TEXT,
-            return_departure_time TEXT,
+    db.all(
 
-            return_checkin_time TEXT,
+        "SELECT * FROM tickets ORDER BY id DESC",
 
-            return_flight_number TEXT
-        )
-    `, (err) => {
+        (err, rows) => {
 
-        if (err) {
+            if (err) {
 
-            console.log("Table creation error:", err);
+                console.log(err);
 
-        } else {
+                return res.status(500).json({
 
-            console.log("tickets table ready");
+                    error: err.message
+                });
+            }
+
+            res.json(rows);
         }
-    });
+    );
 });
 
-module.exports = db;
+// ======================================
+// SERVER
+// ======================================
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+
+    console.log(`Server running on port ${PORT}`);
+});
