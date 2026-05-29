@@ -1,56 +1,20 @@
 const sqlite3 = require("sqlite3").verbose();
 
-const path = require("path");
-
-const fs = require("fs");
-
 // ======================================
-// DATABASE PATH
+// CREATE / CONNECT DATABASE
 // ======================================
 
-const dbPath = path.join(
-    __dirname,
-    "../tickets.db"
-);
+const db = new sqlite3.Database("./tickets.db", (err) => {
 
-console.log("DB PATH:", dbPath);
+    if (err) {
 
-// ======================================
-// CREATE DB FILE IF MISSING
-// ======================================
+        console.error(err.message);
 
-if (!fs.existsSync(dbPath)) {
+    } else {
 
-    fs.writeFileSync(dbPath, "");
-
-    console.log("tickets.db CREATED");
-}
-
-// ======================================
-// CONNECT DATABASE
-// ======================================
-
-const db = new sqlite3.Database(
-
-    dbPath,
-
-    (err) => {
-
-        if (err) {
-
-            console.error(
-                "DB CONNECTION ERROR:",
-                err.message
-            );
-
-        } else {
-
-            console.log(
-                "Connected to tickets database"
-            );
-        }
+        console.log("Connected to tickets database");
     }
-);
+});
 
 // ======================================
 // CREATE TABLE
@@ -108,16 +72,11 @@ db.serialize(() => {
 
         if (err) {
 
-            console.log(
-                "TABLE ERROR:",
-                err
-            );
+            console.log("Table creation error:", err);
 
         } else {
 
-            console.log(
-                "tickets table ready"
-            );
+            console.log("tickets table ready");
         }
     });
 });
