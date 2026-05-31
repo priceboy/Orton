@@ -13,25 +13,7 @@ function getCheckInTime(time) {
         .padStart(2, "0")}`;
 }
 
-function cleanText(text)
-const VALID_AIRPORTS = [
-
-    "NSI",
-    "DLA",
-    "CDG",
-    "KGL",
-    "BGF",
-    "ADD",
-    "IST",
-    "BRU",
-    "LHR",
-    "DXB",
-    "JFK",
-    "AMS",
-    "FRA",
-    "CMN"
-
-];{
+function cleanText(text) {
 
     return text
         .replace(/\r/g, "\n")
@@ -59,29 +41,7 @@ function extractName(text) {
         "TERMINAL",
         "ECONOMY"
     ];
-    // ======================================
-    // PREPARED FOR
-    // ======================================
 
-    const preparedForMatch = text.match(
-
-        /PREPARED FOR\s*\n\s*([^\n]+)/i
-
-    );
-
-    if (preparedForMatch?.[1]) {
-
-        const preparedName =
-            preparedForMatch[1]
-
-            .replace(/\s+/g, " ")
-            .trim();
-
-        if (preparedName.length > 3) {
-
-            return preparedName;
-        }
-    }
     // ======================================
     // ORIGINAL WORKING FORMAT
     // ======================================
